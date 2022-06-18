@@ -25,6 +25,7 @@ public class ExclusionsPanel extends JPanel {
         exclusionStringList.setModel(exclusionStringsModel);
 
         exclusionsAddButton.setToolTipText("Add String Exclusion");
+        exclusionsAddButton.setIcon(Icons.loadIconSvgByTheme("add"));
         exclusionsAddButton.addActionListener(l -> {
             if (exclusionsField.getText().length() > 0) {
                 exclusionStringsModel.addElement(exclusionsField.getText());
@@ -33,6 +34,7 @@ public class ExclusionsPanel extends JPanel {
         });
 
         exclusionsRemoveButton.setToolTipText("Remove String exclusion selected in the list");
+        exclusionsRemoveButton.setIcon(Icons.loadIconSvgByTheme("remove"));
         exclusionsRemoveButton.addActionListener(l -> {
             if (exclusionStringsModel.size() > 0 && exclusionStringList.getSelectedIndex() != -1) {
                 exclusionStringList.getSelectedValuesList().forEach(exclusionStringsModel::removeElement);
@@ -56,9 +58,9 @@ public class ExclusionsPanel extends JPanel {
      */
     private void $$$setupUI$$$() {
         contentPanel = new JPanel();
-        contentPanel.setLayout(new GridLayoutManager(1, 3, new Insets(0, 0, 0, 0), -1, -1));
+        contentPanel.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), -1, -1));
         final JTabbedPane tabbedPane1 = new JTabbedPane();
-        contentPanel.add(tabbedPane1, new GridConstraints(0, 0, 1, 3, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, new Dimension(200, 200), null, 0, false));
+        contentPanel.add(tabbedPane1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, new Dimension(200, 200), null, 0, false));
         final JPanel panel1 = new JPanel();
         panel1.setLayout(new GridLayoutManager(2, 3, new Insets(0, 0, 0, 0), -1, -1));
         tabbedPane1.addTab("Strings", panel1);
@@ -67,11 +69,11 @@ public class ExclusionsPanel extends JPanel {
         exclusionsField = new JTextField();
         panel1.add(exclusionsField, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
         exclusionsAddButton = new JButton();
-        exclusionsAddButton.setText("Add");
-        panel1.add(exclusionsAddButton, new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        exclusionsAddButton.setText("");
+        panel1.add(exclusionsAddButton, new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         exclusionsRemoveButton = new JButton();
-        exclusionsRemoveButton.setText("Remove");
-        panel1.add(exclusionsRemoveButton, new GridConstraints(1, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        exclusionsRemoveButton.setText("");
+        panel1.add(exclusionsRemoveButton, new GridConstraints(1, 2, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         final JPanel panel2 = new JPanel();
         panel2.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), -1, -1));
         tabbedPane1.addTab("References", panel2);

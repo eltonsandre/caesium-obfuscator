@@ -26,6 +26,7 @@ public class MainPanel extends JPanel {
     }
 
     private void init() {
+        inJarButton.setIcon(Icons.loadIconSvgByTheme("menu-open"));
         inJarButton.addActionListener(l -> {
             JFileChooser chooser = new JFileChooser(".");
 
@@ -42,6 +43,7 @@ public class MainPanel extends JPanel {
             }
         });
 
+        outJarButton.setIcon(Icons.loadIconSvgByTheme("menu-open"));
         outJarButton.addActionListener(l -> {
             JFileChooser chooser = new JFileChooser(".");
 
@@ -93,11 +95,11 @@ public class MainPanel extends JPanel {
         inputField = new JTextField();
         contentPanel.add(inputField, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
         inJarButton = new JButton();
-        inJarButton.setText("...");
-        contentPanel.add(inJarButton, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        inJarButton.setText("");
+        contentPanel.add(inJarButton, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         outJarButton = new JButton();
-        outJarButton.setText("...");
-        contentPanel.add(outJarButton, new GridConstraints(1, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        outJarButton.setText("");
+        contentPanel.add(outJarButton, new GridConstraints(1, 2, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         outputField = new JTextField();
         contentPanel.add(outputField, new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
         final JLabel label3 = new JLabel();

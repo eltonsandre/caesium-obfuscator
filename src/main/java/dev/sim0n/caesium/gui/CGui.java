@@ -27,10 +27,20 @@ import dev.sim0n.caesium.mutator.impl.crasher.ImageCrashMutator;
 import dev.sim0n.caesium.util.Dictionary;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileFilter;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Properties;
 
 /**
  * This entire thing is a mess because it was automatically generated with
@@ -47,7 +57,11 @@ public class CGui {
     private LibraryTab libraryTab;
 
     private JButton runMutateButton;
+    private JButton loadProfileButton;
+    private JButton saveProfileButton;
+    private JLabel configProfileLabel;
 
+    private static String currentProfile = "user.home";
     public CGui() {
         initComponents();
     }
@@ -65,6 +79,7 @@ public class CGui {
     }
 
     private void initComponents() {
+        runMutateButton.setIcon(Icons.loadIconSvgByTheme("runAll"));
         runMutateButton.addActionListener(l -> {
             Caesium caesium = new Caesium();
 
@@ -155,6 +170,135 @@ public class CGui {
             }
         });
 
+        loadProfileButton.setToolTipText("Load a profile");
+        loadProfileButton.setIcon(Icons.loadIconSvgByTheme("outgoingChangesOn"));
+        loadProfileButton.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser(currentProfile);
+            FileFilter configLoad = new FileNameExtensionFilter("Properties File", "properties");
+            chooser.setFileFilter(configLoad);
+            chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+
+            int response = chooser.showOpenDialog(loadProfileButton);
+
+            if (response == JFileChooser.APPROVE_OPTION) {
+                File file = chooser.getSelectedFile();
+                currentProfile = file.getAbsolutePath();
+                try (Reader reader = new FileReader(file)) {
+                    Properties properties = new Properties();
+                    properties.load(reader);
+
+                    loadProfile(properties);
+                    configProfileLabel.setText("<html><i>" + file.getName());
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+        });
+
+        saveProfileButton.setToolTipText("Save current profile");
+        saveProfileButton.setIcon(Icons.loadIconSvgByTheme("menu-saveall"));
+        saveProfileButton.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser(".");
+            FileFilter jarFileFilter = new FileNameExtensionFilter("Properties File", "properties");
+            chooser.setFileFilter(jarFileFilter);
+            chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+
+            int response = chooser.showSaveDialog(saveProfileButton);
+            if (response == JFileChooser.APPROVE_OPTION) {
+                File file = chooser.getSelectedFile();
+                try (Writer writer = new FileWriter(file)) {
+                    Properties properties = new Properties();
+                    saveConfigProfile(properties);
+                    properties.store(writer, "Caesium Profile");
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+
+        });
+    }
+
+    private void saveConfigProfile(final Properties properties) throws IOException {
+        properties.put("main.input", mainPanel.inputField.getText());
+        properties.put("main.output", mainPanel.outputField.getText());
+        properties.put("main.applicationType", mainPanel.applicationTypeComboBox.getSelectedItem().toString());
+        properties.put("main.dictionary", mainPanel.dictionaryComboBox.getSelectedItem().toString());
+
+        properties.put("mutator.stringLiteralMutation", String.valueOf(mutatorPanel.stringLiteralcheckBox.isSelected()));
+        properties.put("mutator.controlFlowMutation", String.valueOf(mutatorPanel.controlFlowMutatorCheckBox.isSelected()));
+        properties.put("mutator.numberMutation", String.valueOf(mutatorPanel.numberMutatorCheckBox.isSelected()));
+
+        properties.put("mutator.referenceMutation", mutatorPanel.referenceMutatorComboBox.getSelectedItem().toString());
+        properties.put("mutator.localVariableTables", mutatorPanel.localVariableMutatorComboBox.getSelectedItem().toString());
+        properties.put("mutator.lineNumberTables", mutatorPanel.lineNumberMutatorComboBox.getSelectedItem().toString());
+        properties.put("mutator.polymorph", String.valueOf(mutatorPanel.polymorphMutatorCheckBox.isSelected()));
+        properties.put("mutator.crasher", String.valueOf(mutatorPanel.imageCrashMutatorCheckBox.isSelected()));
+        properties.put("mutator.classFolder", String.valueOf(mutatorPanel.classFolderMutatorCheckBox.isSelected()));
+        properties.put("mutator.trimmer", String.valueOf(mutatorPanel.trimMutatorCheckBox.isSelected()));
+        properties.put("mutator.shufflerMembers", String.valueOf(mutatorPanel.shuffleMutatorCheckBox.isSelected()));
+
+        properties.put("exclusion.strings", joinString(exclusionsPanel.exclusionStringsModel.elements()));
+
+        properties.put("dependencies.paths", joinString(libraryTab.dependenciesListModel.elements()));
+    }
+
+    String joinString(Enumeration<String> enumeration) {
+        StringBuilder stringbuffer = new StringBuilder();
+        while (enumeration.hasMoreElements()) {
+            stringbuffer.append(enumeration.nextElement());
+            if (enumeration.hasMoreElements()) {
+                stringbuffer.append(",");
+            }
+        }
+        return stringbuffer.toString();
+    }
+
+    private void loadProfile(Properties properties) {
+        Optional.ofNullable(properties.get("main.input"))
+                .ifPresent(value -> mainPanel.inputField.setText((String) value));
+        Optional.ofNullable(properties.get("main.output"))
+                .ifPresent(value -> mainPanel.outputField.setText((String) value));
+        Optional.ofNullable(properties.get("main.applicationType"))
+                .ifPresent(value -> mainPanel.applicationTypeComboBox.setSelectedItem(value));
+        Optional.ofNullable(properties.get("main.dictionary"))
+                .ifPresent(value -> mainPanel.dictionaryComboBox.setSelectedItem(value));
+
+        Optional.ofNullable(properties.get("mutator.stringLiteralMutation"))
+                .ifPresent(value -> mutatorPanel.stringLiteralcheckBox.setSelected(Boolean.parseBoolean(value.toString())));
+        Optional.ofNullable(properties.get("mutator.controlFlowMutation"))
+                .ifPresent(value -> mutatorPanel.controlFlowMutatorCheckBox.setSelected(Boolean.parseBoolean(value.toString())));
+        Optional.ofNullable(properties.get("mutator.numberMutation"))
+                .ifPresent(value -> mutatorPanel.numberMutatorCheckBox.setSelected(Boolean.parseBoolean(value.toString())));
+        Optional.ofNullable(properties.get("mutator.referenceMutation"))
+                .ifPresent(value -> mutatorPanel.referenceMutatorComboBox.setSelectedItem(value));
+        Optional.ofNullable(properties.get("mutator.localVariableTables"))
+                .ifPresent(value -> mutatorPanel.localVariableMutatorComboBox.setSelectedItem(value));
+        Optional.ofNullable(properties.get("mutator.lineNumberTables"))
+                .ifPresent(value -> mutatorPanel.lineNumberMutatorComboBox.setSelectedItem(value));
+        Optional.ofNullable(properties.get("mutator.polymorph"))
+                .ifPresent(value -> mutatorPanel.polymorphMutatorCheckBox.setSelected(Boolean.parseBoolean(value.toString())));
+        Optional.ofNullable(properties.get("mutator.crasher"))
+                .ifPresent(value -> mutatorPanel.imageCrashMutatorCheckBox.setSelected(Boolean.parseBoolean(value.toString())));
+        Optional.ofNullable(properties.get("mutator.classFolder"))
+                .ifPresent(value -> mutatorPanel.classFolderMutatorCheckBox.setSelected(Boolean.parseBoolean(value.toString())));
+        Optional.ofNullable(properties.get("mutator.trimmer"))
+                .ifPresent(value -> mutatorPanel.trimMutatorCheckBox.setSelected(Boolean.parseBoolean(value.toString())));
+        Optional.ofNullable(properties.get("mutator.shufflerMembers"))
+                .ifPresent(value -> mutatorPanel.shuffleMutatorCheckBox.setSelected(Boolean.parseBoolean(value.toString())));
+
+        Optional.ofNullable(properties.get("exclusion.strings"))
+                .ifPresent(value -> Arrays.stream(((String) value).split(","))
+                        .filter(Objects::nonNull)
+                        .filter(it -> !it.isEmpty())
+                        .filter(it -> libraryTab.dependenciesListModel.indexOf(it) == -1)
+                        .forEach(exclusionsPanel.exclusionStringsModel::addElement));
+
+        Optional.ofNullable(properties.get("dependencies.paths"))
+                .ifPresent(value -> Arrays.stream(((String) value).split(","))
+                        .filter(Objects::nonNull)
+                        .filter(it -> !it.isEmpty())
+                        .filter(it -> libraryTab.dependenciesListModel.indexOf(it) == -1)
+                        .forEach(libraryTab::addDependencyPath));
     }
 
     {
@@ -173,10 +317,10 @@ public class CGui {
      */
     private void $$$setupUI$$$() {
         contentPane = new JPanel();
-        contentPane.setLayout(new GridLayoutManager(2, 1, new Insets(5, 5, 5, 5), -1, -1));
+        contentPane.setLayout(new GridLayoutManager(2, 5, new Insets(5, 5, 5, 5), -1, -1));
         contentPane.setPreferredSize(new Dimension(600, 450));
         final JTabbedPane tabbedPane1 = new JTabbedPane();
-        contentPane.add(tabbedPane1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, new Dimension(200, 200), null, 0, false));
+        contentPane.add(tabbedPane1, new GridConstraints(0, 0, 1, 5, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, new Dimension(200, 200), null, 0, false));
         final JPanel panel1 = new JPanel();
         panel1.setLayout(new GridLayoutManager(1, 1, new Insets(5, 5, 5, 5), -1, -1));
         tabbedPane1.addTab("Main", panel1);
@@ -195,11 +339,22 @@ public class CGui {
         final JPanel panel4 = new JPanel();
         panel4.setLayout(new GridLayoutManager(1, 1, new Insets(5, 5, 5, 5), -1, -1));
         tabbedPane1.addTab("Dependencies", panel4);
-        final LibraryTab nestedForm1 = new LibraryTab();
-        panel4.add(nestedForm1.$$$getRootComponent$$$(), new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
+        libraryTab = new LibraryTab();
+        panel4.add(libraryTab.$$$getRootComponent$$$(), new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
         runMutateButton = new JButton();
-        runMutateButton.setText("Button");
-        contentPane.add(runMutateButton, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_EAST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        runMutateButton.setText("");
+        contentPane.add(runMutateButton, new GridConstraints(1, 4, 1, 1, GridConstraints.ANCHOR_EAST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        loadProfileButton = new JButton();
+        loadProfileButton.setText("");
+        contentPane.add(loadProfileButton, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        saveProfileButton = new JButton();
+        saveProfileButton.setText("");
+        contentPane.add(saveProfileButton, new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        configProfileLabel = new JLabel();
+        configProfileLabel.setText("");
+        contentPane.add(configProfileLabel, new GridConstraints(1, 2, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        final Spacer spacer1 = new Spacer();
+        contentPane.add(spacer1, new GridConstraints(1, 3, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
     }
 
     /**
