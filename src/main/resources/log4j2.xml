@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN">
     <Properties>
-        <Property name="filename">CAESIUM_log.txt</Property>
+        <Property name="filename">caesium.log</Property>
     </Properties>
 
     <Appenders>
@@ -10,7 +10,7 @@
         </Console>
 
         <File name="File" fileName="${filename}">
-            <PatternLayout pattern="[%d{YYYY:MM:HH:mm:ss}] %-5level%msg%n"/>
+            <PatternLayout pattern="%d{YYYY-MM-dd HH:mm:ss} %-5level%msg%n"/>
         </File>
     </Appenders>
 

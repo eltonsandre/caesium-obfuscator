@@ -1,70 +1,87 @@
 package dev.sim0n.caesium;
 
-import java.awt.HeadlessException;
+import dev.sim0n.caesium.exception.CaesiumException;
+import dev.sim0n.caesium.util.OSUtil;
+import dev.sim0n.caesium.util.classwriter.ClassTree;
+import dev.sim0n.caesium.util.wrapper.impl.ClassWrapper;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.tree.ClassNode;
+
+import javax.swing.*;
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
-import javax.swing.DefaultListModel;
-import javax.swing.JOptionPane;
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public final class PreRuntime {
 
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.tree.ClassNode;
-
-import dev.sim0n.caesium.exception.CaesiumException;
-import dev.sim0n.caesium.gui.LibraryTab;
-import dev.sim0n.caesium.util.OSUtil;
-import dev.sim0n.caesium.util.classwriter.ClassTree;
-import dev.sim0n.caesium.util.wrapper.impl.ClassWrapper;
-
-public class PreRuntime {
-    private static Map<String, ClassWrapper> classPath = new HashMap<>();;
-    private static Map<String, ClassWrapper> classes = new HashMap<>();
-    private static Map<String, ClassTree> hierarchy = new HashMap<>();
-    public static DefaultListModel<String> libraries = new DefaultListModel<>();
+    private static final Map<String, ClassWrapper> classPath = new HashMap<>();
+    private static final Map<String, ClassWrapper> classes = new HashMap<>();
+    private static final Map<String, ClassTree> hierarchy = new HashMap<>();
+    public static final Set<String> libraries = new LinkedHashSet<>();
+    public static final Set<String> classPaths = new LinkedHashSet<>();
 
     public static void loadJavaRuntime() throws HeadlessException, IOException {
-        String path;
-        switch (OSUtil.getCurrentOS()) {
-        case WINDOWS:
-            path = System.getProperty("sun.boot.class.path");
-            if (path != null) {
-                String[] pathFiles = path.split(";");
-                for (String lib : pathFiles) {
-                    if (lib.endsWith(".jar")) {
-                        libraries.addElement(lib);
-                    }
-                }
-            } else {
-                JOptionPane.showMessageDialog(null, "rt.jar was not found, you need to add it manually.",
-                        "Runtime Error", JOptionPane.ERROR_MESSAGE);
-            }
-            break;
+        loadJavaRuntime(null);
+    }
 
-        case UNIX:
-        case MAC:
-            path = System.getProperty("sun.boot.class.path");
-            if (path != null) {
-                String[] pathFiles = path.split(":");
-                for (String lib : pathFiles) {
-                    if (lib.endsWith(".jar")) {
-                        libraries.addElement(lib);
-                    }
-                }
-            } else {
-                JOptionPane.showMessageDialog(null, "rt.jar was not found, you need to add it manually.",
-                        "Runtime Error", JOptionPane.ERROR_MESSAGE);
+    public static void loadJavaRuntime(Component component) throws HeadlessException, IOException {
+
+        if (Double.parseDouble(System.getProperty("java.vm.specification.version")) > 1.8) {
+            File jmods = new File(System.getProperty("java.home") + "/jmods");
+            if (jmods.exists() && jmods.listFiles() != null) {
+                classPaths.add(jmods.getAbsolutePath());
+                return;
             }
-            break;
-        default:
-            break;
+        }
+
+        String path = System.getProperty("sun.boot.class.path");
+        switch (OSUtil.getCurrentOS()) {
+            case WINDOWS:
+                if (path != null) {
+                    String[] pathFiles = path.split(";");
+                    for (String lib : pathFiles) {
+                        if (lib.endsWith(".jar") || lib.endsWith(".jmod")) {
+                            libraries.add(lib);
+                        }
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(component, "rt.jar was not found, you need to add it manually.",
+                            "Runtime Error", JOptionPane.ERROR_MESSAGE);
+                }
+                break;
+
+            case UNIX:
+            case MAC:
+                if (path != null) {
+                    String[] pathFiles = path.split(":");
+                    for (String lib : pathFiles) {
+                        if (lib.endsWith(".jar") || lib.endsWith(".jmod")) {
+                            libraries.add(lib);
+                        }
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(component, "rt.jar was not found, you need to add it manually.",
+                            "Runtime Error", JOptionPane.ERROR_MESSAGE);
+                }
+                break;
+            default:
+                break;
         }
     }
 
@@ -108,10 +125,11 @@ public class PreRuntime {
     }
 
     public static void loadClassPath() {
-        ArrayList<String> libs;
+        Set<String> dependencies = new LinkedHashSet<>();
+        dependencies.addAll(libraries);
+        dependencies.addAll(loadJarAndJmodInClasspaths());
 
-        libs = Collections.list(libraries.elements());
-        for (String s : libs) {
+        for (String s : dependencies) {
             File file = new File(s);
             if (file.exists()) {
                 System.out.printf("Loading library \"%s\".%n", file.getAbsolutePath());
@@ -129,7 +147,7 @@ public class PreRuntime {
                                 ClassWrapper classWrapper = new ClassWrapper(classNode, true);
 
                                 classPath.put(classWrapper.originalName, classWrapper);
-                            } catch (Throwable t) {
+                            } catch (final Exception ignored) {
                                 // Don't care.
                             }
                         }
@@ -153,6 +171,20 @@ public class PreRuntime {
             }
 
         }
+    }
+
+    private static Set<String> loadJarAndJmodInClasspaths() {
+        final Set<String> dependencies = new LinkedHashSet<>();
+        for (String path : classPaths) {
+            try (Stream<Path> walk = Files.walk(Paths.get(path))) {
+                dependencies.addAll( walk.map(Path::toString)
+                        .filter(file -> file.endsWith(".jar") || file.endsWith(".jmod"))
+                        .collect(Collectors.toSet()));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return dependencies;
     }
 
     public static void buildHierarchy(ClassWrapper classWrapper, ClassWrapper sub) throws CaesiumException {
@@ -187,7 +219,6 @@ public class PreRuntime {
             try {
                 buildHierarchy(classWrapper, null);
             } catch (CaesiumException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         });

@@ -5,6 +5,7 @@
 package dev.sim0n.caesium.gui;
 
 import com.formdev.flatlaf.FlatDarculaLaf;
+import com.formdev.flatlaf.FlatLightLaf;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
@@ -36,11 +37,13 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * This entire thing is a mess because it was automatically generated with
@@ -60,17 +63,25 @@ public class CGui {
     private JButton loadProfileButton;
     private JButton saveProfileButton;
     private JLabel configProfileLabel;
+    private ClassPathPanel classpathPanel;
+    private static JFrame appFrame;
 
-    private static String currentProfile = "user.home";
+    private String currentProfile = "user.home";
+
     public CGui() {
         initComponents();
     }
 
     public static void main(String[] args) throws HeadlessException, IOException {
         PreRuntime.loadJavaRuntime();
-        JFrame appFrame = new JFrame("Caesium Obfuscator");
-        FlatDarculaLaf.setup();
-//        FlatLightLaf.setup();
+
+        appFrame = new JFrame("Caesium Obfuscator");
+        URL resource = CGui.class.getClassLoader().getResource("icons/logo.png");
+        if (resource != null) {
+            appFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(resource));
+        }
+        initTheme();
+
         appFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         appFrame.setContentPane(new CGui().contentPane);
         appFrame.pack();
@@ -78,12 +89,35 @@ public class CGui {
         appFrame.setVisible(true);
     }
 
+    private static void initTheme() {
+        AtomicBoolean themeLigth = new AtomicBoolean(false);
+        File file = new File("./caesium.properties");
+        try (Reader reader = new FileReader(file)) {
+            Properties properties = new Properties();
+            properties.load(reader);
+            Optional.ofNullable(properties.get("theme.light"))
+                    .ifPresent(value -> themeLigth.set(Boolean.parseBoolean(properties.getProperty("theme.light"))));
+        } catch (Exception ignored) {
+        }
+
+        if (themeLigth.get()) {
+            FlatLightLaf.setup();
+        } else {
+            FlatDarculaLaf.setup();
+        }
+    }
+
     private void initComponents() {
         runMutateButton.setIcon(Icons.loadIconSvgByTheme("runAll"));
+        runMutateButton.setToolTipText("Run mutate");
         runMutateButton.addActionListener(l -> {
             Caesium caesium = new Caesium();
 
             File input = new File(mainPanel.inputField.getText());
+            if (!input.exists()) {
+                JOptionPane.showMessageDialog(contentPane, "Unable to find input file", "", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             try {
                 PreRuntime.loadInput(mainPanel.inputField.getText());
             } catch (CaesiumException e1) {
@@ -92,10 +126,6 @@ public class CGui {
 
             PreRuntime.loadClassPath();
             PreRuntime.buildInheritance();
-            if (!input.exists()) {
-                JOptionPane.showMessageDialog(contentPane, "Unable to find input file", "", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
 
             File parent = new File(input.getParent());
             File output = new File(mainPanel.outputField.getText());
@@ -198,7 +228,7 @@ public class CGui {
         saveProfileButton.setToolTipText("Save current profile");
         saveProfileButton.setIcon(Icons.loadIconSvgByTheme("menu-saveall"));
         saveProfileButton.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser(".");
+            JFileChooser chooser = new JFileChooser(currentProfile);
             FileFilter jarFileFilter = new FileNameExtensionFilter("Properties File", "properties");
             chooser.setFileFilter(jarFileFilter);
             chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
@@ -210,6 +240,8 @@ public class CGui {
                     Properties properties = new Properties();
                     saveConfigProfile(properties);
                     properties.store(writer, "Caesium Profile");
+                    currentProfile = file.getAbsolutePath();
+                    configProfileLabel.setText("<html><i>" + file.getName());
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
                 }
@@ -240,6 +272,7 @@ public class CGui {
         properties.put("exclusion.strings", joinString(exclusionsPanel.exclusionStringsModel.elements()));
 
         properties.put("dependencies.paths", joinString(libraryTab.dependenciesListModel.elements()));
+        properties.put("classpath.paths", joinString(classpathPanel.classPathListModel.elements()));
     }
 
     String joinString(Enumeration<String> enumeration) {
@@ -299,6 +332,13 @@ public class CGui {
                         .filter(it -> !it.isEmpty())
                         .filter(it -> libraryTab.dependenciesListModel.indexOf(it) == -1)
                         .forEach(libraryTab::addDependencyPath));
+
+        Optional.ofNullable(properties.get("classpath.paths"))
+                .ifPresent(value -> Arrays.stream(((String) value).split(","))
+                        .filter(Objects::nonNull)
+                        .filter(it -> !it.isEmpty())
+                        .filter(it -> classpathPanel.classPathListModel.indexOf(it) == -1)
+                        .forEach(classpathPanel::addClasspath));
     }
 
     {
@@ -341,6 +381,11 @@ public class CGui {
         tabbedPane1.addTab("Dependencies", panel4);
         libraryTab = new LibraryTab();
         panel4.add(libraryTab.$$$getRootComponent$$$(), new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
+        final JPanel panel5 = new JPanel();
+        panel5.setLayout(new GridLayoutManager(1, 1, new Insets(5, 5, 5, 5), -1, -1));
+        tabbedPane1.addTab("Classpath", panel5);
+        classpathPanel = new ClassPathPanel();
+        panel5.add(classpathPanel.$$$getRootComponent$$$(), new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
         runMutateButton = new JButton();
         runMutateButton.setText("");
         contentPane.add(runMutateButton, new GridConstraints(1, 4, 1, 1, GridConstraints.ANCHOR_EAST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));

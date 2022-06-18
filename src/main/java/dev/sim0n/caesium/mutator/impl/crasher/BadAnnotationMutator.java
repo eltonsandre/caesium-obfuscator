@@ -2,8 +2,6 @@ package dev.sim0n.caesium.mutator.impl.crasher;
 
 import dev.sim0n.caesium.mutator.ClassMutator;
 import dev.sim0n.caesium.util.wrapper.impl.ClassWrapper;
-import dev.sim0n.caesium.util.wrapper.impl.FieldWrapper;
-import dev.sim0n.caesium.util.wrapper.impl.MethodWrapper;
 import joptsimple.internal.Strings;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
@@ -14,7 +12,8 @@ import java.util.ArrayList;
  * This generates a bunch of invisible annotations which will cause procyon to be very slow
  */
 public class BadAnnotationMutator extends ClassMutator {
-    private final String STRING = Strings.repeat('\n', 40);
+
+    private static final String STRING = Strings.repeat('\n', 40);
 
     @Override
     public void handle(ClassWrapper wrapper) {

@@ -57,7 +57,7 @@ public class ClassManager {
                         manifest = manifest.substring(0, manifest.length() - 2);
 
                         // watermark the manifest
-                        manifest += String.format("Obfuscated-By: Caesium %s\r\n", Caesium.VERSION);
+                        manifest += String.format("Obfuscated-By: Caesium %s\r%n", Caesium.VERSION);
 
                         data = manifest.getBytes();
                     }

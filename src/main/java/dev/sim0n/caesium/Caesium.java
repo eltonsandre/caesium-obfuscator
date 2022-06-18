@@ -12,7 +12,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
-import java.io.PrintStream;
 import java.security.SecureRandom;
 import java.util.Optional;
 
