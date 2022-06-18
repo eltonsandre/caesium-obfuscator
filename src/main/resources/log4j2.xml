@@ -10,7 +10,7 @@
         </Console>
 
         <File name="File" fileName="${filename}">
-            <PatternLayout pattern="[%d{YYYY:MM:HH:mm:ss}] %-5level%msg%n"/>
+            <PatternLayout pattern="[%d{YYYY-MM-dd HH:mm:ss}] %-5level%msg%n"/>
         </File>
     </Appenders>
 
