@@ -26,6 +26,7 @@ import dev.sim0n.caesium.mutator.impl.TrimMutator;
 import dev.sim0n.caesium.mutator.impl.crasher.BadAnnotationMutator;
 import dev.sim0n.caesium.mutator.impl.crasher.ImageCrashMutator;
 import dev.sim0n.caesium.util.Dictionary;
+import lombok.var;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
@@ -74,19 +75,20 @@ public class CGui {
 
     public static void main(String[] args) throws HeadlessException, IOException {
         PreRuntime.loadJavaRuntime();
+        SwingUtilities.invokeLater(() -> {
+            appFrame = new JFrame("Caesium Obfuscator");
+            URL resource = CGui.class.getClassLoader().getResource("icons/logo.png");
+            if (resource != null) {
+                appFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(resource));
+            }
+            initTheme();
 
-        appFrame = new JFrame("Caesium Obfuscator");
-        URL resource = CGui.class.getClassLoader().getResource("icons/logo.png");
-        if (resource != null) {
-            appFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(resource));
-        }
-        initTheme();
-
-        appFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        appFrame.setContentPane(new CGui().contentPane);
-        appFrame.pack();
-        appFrame.setLocationRelativeTo(appFrame.getOwner());
-        appFrame.setVisible(true);
+            appFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+            appFrame.setContentPane(new CGui().contentPane);
+            appFrame.pack();
+            appFrame.setLocationRelativeTo(appFrame.getOwner());
+            appFrame.setVisible(true);
+        });
     }
 
     private static void initTheme() {
@@ -100,6 +102,7 @@ public class CGui {
         } catch (Exception ignored) {
         }
 
+        JFrame.setDefaultLookAndFeelDecorated(true);
         if (themeLigth.get()) {
             FlatLightLaf.setup();
         } else {
@@ -108,103 +111,30 @@ public class CGui {
     }
 
     private void initComponents() {
-        runMutateButton.setIcon(Icons.loadIconSvgByTheme("runAll"));
+        runMutateButton.setText("Run mutate");
         runMutateButton.setToolTipText("Run mutate");
+        runMutateButton.setActionCommand("Running...");
+        runMutateButton.setIcon(Icons.loadIconSvgByTheme("runAll"));
         runMutateButton.addActionListener(l -> {
-            Caesium caesium = new Caesium();
-
-            File input = new File(mainPanel.inputField.getText());
-            if (!input.exists()) {
-                JOptionPane.showMessageDialog(contentPane, "Unable to find input file", "", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            try {
-                PreRuntime.loadInput(mainPanel.inputField.getText());
-            } catch (CaesiumException e1) {
-                e1.printStackTrace();
-            }
-
-            PreRuntime.loadClassPath();
-            PreRuntime.buildInheritance();
-
-            File parent = new File(input.getParent());
-            File output = new File(mainPanel.outputField.getText());
-
-            if (output.exists()) {
-                // we do it this way so we don't have to loop through a specified x amount of times
-                for (int i = 0; i < parent.listFiles().length; i++) {
-                    String filePath = String.format("%s.BACKUP-%d", output.getAbsoluteFile(), i);
-                    File file = new File(filePath);
-
-                    if (!file.exists() && output.renameTo(new File(filePath))) {
-                        output = new File(mainPanel.outputField.getText());
-                        break;
-                    }
+                    runMutateButton.setEnabled(false);
+                    runMutateButton.setText("Running...");
+                    SwingUtilities.invokeLater(() -> {
+                        try {
+                            runMutate();
+                        } finally {
+                            runMutateButton.setEnabled(true);
+                            runMutateButton.setText("Run mutate");
+                        }
+                    });
                 }
-            }
+        );
 
-            try {
-                caesium.setDictionary(Dictionary.values()[mainPanel.dictionaryComboBox.getSelectedIndex()]);
-
-                MutatorManager mutatorManager = caesium.getMutatorManager();
-                // string
-                StringMutator stringMutator = mutatorManager.getMutator(StringMutator.class);
-
-                stringMutator.setEnabled(mutatorPanel.stringLiteralcheckBox.isSelected());
-
-
-                Enumeration<String> elements = exclusionsPanel.exclusionStringsModel.elements();
-
-                while (elements.hasMoreElements()) {
-                    stringMutator.getExclusions().add(elements.nextElement());
-                }
-
-                mutatorManager.getMutator(BadAnnotationMutator.class).setEnabled(mutatorPanel.imageCrashMutatorCheckBox.isSelected());
-
-                mutatorManager.getMutator(ControlFlowMutator.class).setEnabled(mutatorPanel.controlFlowMutatorCheckBox.isSelected());
-                mutatorManager.getMutator(NumberMutator.class).setEnabled(mutatorPanel.numberMutatorCheckBox.isSelected());
-
-                mutatorManager.getMutator(PolymorphMutator.class).setEnabled(mutatorPanel.polymorphMutatorCheckBox.isSelected());
-
-                mutatorManager.getMutator(ImageCrashMutator.class).setEnabled(mutatorPanel.imageCrashMutatorCheckBox.isSelected());
-                mutatorManager.getMutator(ClassFolderMutator.class).setEnabled(mutatorPanel.classFolderMutatorCheckBox.isSelected());
-
-                mutatorManager.getMutator(TrimMutator.class).setEnabled(mutatorPanel.trimMutatorCheckBox.isSelected());
-                mutatorManager.getMutator(ShuffleMutator.class).setEnabled(mutatorPanel.shuffleMutatorCheckBox.isSelected());
-
-                int referenceMutatorIndex = mutatorPanel.referenceMutatorComboBox.getSelectedIndex();
-                if (referenceMutatorIndex > 0) {
-                    ReferenceMutator mutator = mutatorManager.getMutator(ReferenceMutator.class);
-                    mutator.setEnabled(true);
-                }
-
-                int lineNumberMutatorIndex = mutatorPanel.lineNumberMutatorComboBox.getSelectedIndex();
-                if (lineNumberMutatorIndex > 0) {
-                    LineNumberMutator mutator = mutatorManager.getMutator(LineNumberMutator.class);
-                    mutator.setType(lineNumberMutatorIndex - 1);
-                    mutator.setEnabled(true);
-                }
-
-                int localVariableMutatorIndex = mutatorPanel.localVariableMutatorComboBox.getSelectedIndex();
-                if (localVariableMutatorIndex > 0) {
-                    LocalVariableMutator mutator = mutatorManager.getMutator(LocalVariableMutator.class);
-                    mutator.setType(localVariableMutatorIndex - 1);
-                    mutator.setEnabled(true);
-                }
-
-                if (caesium.run(input, output) != 0) {
-                    Caesium.getLogger().warn("Exited with non default exit code.");
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-
+        loadProfileButton.setText("Load a profile");
         loadProfileButton.setToolTipText("Load a profile");
         loadProfileButton.setIcon(Icons.loadIconSvgByTheme("outgoingChangesOn"));
         loadProfileButton.addActionListener(e -> {
             JFileChooser chooser = new JFileChooser(currentProfile);
-            FileFilter configLoad = new FileNameExtensionFilter("Properties File", "properties");
+            FileFilter configLoad = new FileNameExtensionFilter("Caesium files", "caesium", "config", "properties");
             chooser.setFileFilter(configLoad);
             chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 
@@ -225,11 +155,12 @@ public class CGui {
             }
         });
 
+        saveProfileButton.setText("Save profile");
         saveProfileButton.setToolTipText("Save current profile");
         saveProfileButton.setIcon(Icons.loadIconSvgByTheme("menu-saveall"));
         saveProfileButton.addActionListener(e -> {
             JFileChooser chooser = new JFileChooser(currentProfile);
-            FileFilter jarFileFilter = new FileNameExtensionFilter("Properties File", "properties");
+            FileFilter jarFileFilter = new FileNameExtensionFilter("Caesium flies", "caesium", "config", "properties");
             chooser.setFileFilter(jarFileFilter);
             chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 
@@ -248,6 +179,93 @@ public class CGui {
             }
 
         });
+    }
+
+    private void runMutate() {
+        var input = new File(mainPanel.inputField.getText());
+        if (!input.exists()) {
+            JOptionPane.showMessageDialog(contentPane, "Unable to find input file", "", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        try {
+            PreRuntime.loadInput(mainPanel.inputField.getText());
+        } catch (CaesiumException e1) {
+            e1.printStackTrace();
+        }
+
+        PreRuntime.loadClassPath();
+        PreRuntime.buildInheritance();
+
+        var parent = new File(input.getParent());
+        var output = new File(mainPanel.outputField.getText());
+
+        if (output.exists()) {
+            // we do it this way so we don't have to loop through a specified x amount of times
+            for (int i = 0; i < parent.listFiles().length; i++) {
+                String filePath = String.format("%s.BACKUP-%d", output.getAbsoluteFile(), i);
+                File file = new File(filePath);
+
+                if (!file.exists() && output.renameTo(new File(filePath))) {
+                    output = new File(mainPanel.outputField.getText());
+                    break;
+                }
+            }
+        }
+        var caesium = new Caesium();
+        try {
+            caesium.setDictionary(Dictionary.values()[mainPanel.dictionaryComboBox.getSelectedIndex()]);
+
+            MutatorManager mutatorManager = caesium.getMutatorManager();
+            // string
+            StringMutator stringMutator = mutatorManager.getMutator(StringMutator.class);
+            stringMutator.setEnabled(mutatorPanel.stringLiteralcheckBox.isSelected());
+
+
+            Enumeration<String> elements = exclusionsPanel.exclusionStringsModel.elements();
+
+            while (elements.hasMoreElements()) {
+                stringMutator.getExclusions().add(elements.nextElement());
+            }
+
+            mutatorManager.getMutator(BadAnnotationMutator.class).setEnabled(mutatorPanel.imageCrashMutatorCheckBox.isSelected());
+
+            mutatorManager.getMutator(ControlFlowMutator.class).setEnabled(mutatorPanel.controlFlowMutatorCheckBox.isSelected());
+            mutatorManager.getMutator(NumberMutator.class).setEnabled(mutatorPanel.numberMutatorCheckBox.isSelected());
+
+            mutatorManager.getMutator(PolymorphMutator.class).setEnabled(mutatorPanel.polymorphMutatorCheckBox.isSelected());
+
+            mutatorManager.getMutator(ImageCrashMutator.class).setEnabled(mutatorPanel.imageCrashMutatorCheckBox.isSelected());
+            mutatorManager.getMutator(ClassFolderMutator.class).setEnabled(mutatorPanel.classFolderMutatorCheckBox.isSelected());
+
+            mutatorManager.getMutator(TrimMutator.class).setEnabled(mutatorPanel.trimMutatorCheckBox.isSelected());
+            mutatorManager.getMutator(ShuffleMutator.class).setEnabled(mutatorPanel.shuffleMutatorCheckBox.isSelected());
+
+            int referenceMutatorIndex = mutatorPanel.referenceMutatorComboBox.getSelectedIndex();
+            if (referenceMutatorIndex > 0) {
+                ReferenceMutator mutator = mutatorManager.getMutator(ReferenceMutator.class);
+                mutator.setEnabled(true);
+            }
+
+            int lineNumberMutatorIndex = mutatorPanel.lineNumberMutatorComboBox.getSelectedIndex();
+            if (lineNumberMutatorIndex > 0) {
+                LineNumberMutator mutator = mutatorManager.getMutator(LineNumberMutator.class);
+                mutator.setType(lineNumberMutatorIndex - 1);
+                mutator.setEnabled(true);
+            }
+
+            int localVariableMutatorIndex = mutatorPanel.localVariableMutatorComboBox.getSelectedIndex();
+            if (localVariableMutatorIndex > 0) {
+                LocalVariableMutator mutator = mutatorManager.getMutator(LocalVariableMutator.class);
+                mutator.setType(localVariableMutatorIndex - 1);
+                mutator.setEnabled(true);
+            }
+
+            if (caesium.run(input, output) != 0) {
+                Caesium.getLogger().warn("Exited with non default exit code.");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void saveConfigProfile(final Properties properties) throws IOException {

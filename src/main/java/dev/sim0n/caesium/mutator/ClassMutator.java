@@ -32,7 +32,7 @@ public abstract class ClassMutator implements Opcodes, Finishable {
     public String getRandomName() {
         switch (caesium.getDictionary()) {
             case ABC_LOWERCASE:
-                return StringUtil.getRandomString(3, 6, false);
+                return StringUtil.getRandomString(3 , randomRange(6,8), false);
 
             case ABC:
                 return StringUtil.getRandomString(3, 6, true);
@@ -66,4 +66,9 @@ public abstract class ClassMutator implements Opcodes, Finishable {
         }
 
     }
+
+    protected int randomRange(int low , int high){
+        return random.nextInt(high-low) + low;
+    }
+
 }

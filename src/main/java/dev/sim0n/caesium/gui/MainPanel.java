@@ -4,11 +4,14 @@ package dev.sim0n.caesium.gui;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
+import java.awt.event.InputMethodEvent;
+import java.awt.event.InputMethodListener;
 import java.io.File;
 
 public class MainPanel extends JPanel {
@@ -21,38 +24,50 @@ public class MainPanel extends JPanel {
     protected JComboBox<String> dictionaryComboBox;
     private JPanel contentPanel;
 
+    private String currentProfile = "user.home";
+
     protected MainPanel() {
         init();
     }
 
     private void init() {
         inJarButton.setIcon(Icons.loadIconSvgByTheme("menu-open"));
+
+        FileFilter jarFileFilter = new FileNameExtensionFilter("Jar Files", "jar");
+        inJarButton.addInputMethodListener(new InputMethodListener() {
+            @Override
+            public void inputMethodTextChanged(final InputMethodEvent event) {
+                System.out.println("inputMethodTextChanged");
+            }
+
+            @Override
+            public void caretPositionChanged(final InputMethodEvent event) {
+                System.out.println("caretPositionChanged");
+            }
+        });
         inJarButton.addActionListener(l -> {
-            JFileChooser chooser = new JFileChooser(".");
-
-            FileFilter jarFileFilter = new FileNameExtensionFilter("Jar Files", "jar");
-
+            JFileChooser chooser = new JFileChooser(currentProfile);
             chooser.setFileFilter(jarFileFilter);
             chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
             int response = chooser.showOpenDialog(inJarButton);
 
             if (response == JFileChooser.APPROVE_OPTION) {
                 File file = chooser.getSelectedFile();
-
-                inputField.setText(file.getAbsolutePath());
+                currentProfile = file.getAbsolutePath();
+                inputField.setText(currentProfile);
             }
         });
 
         outJarButton.setIcon(Icons.loadIconSvgByTheme("menu-open"));
         outJarButton.addActionListener(l -> {
-            JFileChooser chooser = new JFileChooser(".");
+            JFileChooser chooser = new JFileChooser(currentProfile);
 
             int response = chooser.showOpenDialog(outJarButton);
 
             if (response == JFileChooser.APPROVE_OPTION) {
                 File file = chooser.getSelectedFile();
-
-                outputField.setText(file.getAbsolutePath());
+                currentProfile = file.getAbsolutePath();
+                outputField.setText(currentProfile);
             }
         });
 

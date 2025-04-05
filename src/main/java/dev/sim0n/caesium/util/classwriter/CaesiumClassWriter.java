@@ -6,6 +6,9 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.Set;
 
+import dev.sim0n.caesium.exception.CaesiumMissingDependencyException;
+import lombok.Getter;
+import lombok.extern.log4j.Log4j2;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
 
@@ -15,78 +18,88 @@ import dev.sim0n.caesium.util.wrapper.impl.ClassWrapper;
 
 import javax.swing.*;
 
+@Log4j2
 public class CaesiumClassWriter extends ClassWriter {
+
+    public static final String OBJECT_REFERENCE_NAME = "java/lang/Object";
+
+    @Getter
+    private final Set<String> missingInClasspath;
+
+    public CaesiumClassWriter() {
+        this(ClassWriter.COMPUTE_FRAMES);
+    }
+
     public CaesiumClassWriter(int flags) {
         super(flags);
+        missingInClasspath = new HashSet<>();
     }
 
     @Override
-    protected String getCommonSuperClass(final String type1, final String type2) {
-        if ("java/lang/Object".equals(type1) || "java/lang/Object".equals(type2))
-            return "java/lang/Object";
+    protected String getCommonSuperClass(final String typeFirst, final String typeSecund) {
+        if (OBJECT_REFERENCE_NAME.equals(typeFirst) || OBJECT_REFERENCE_NAME.equals(typeSecund))
+            return OBJECT_REFERENCE_NAME;
 
         String first = null;
         try {
-            first = deriveCommonSuperName(type1, type2);
-        } catch (CaesiumException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            first = deriveCommonSuperName(typeFirst, typeSecund);
+        } catch (CaesiumMissingDependencyException e) {
+            log.info(e.getMessage());
         }
 
         String second = null;
         try {
-            second = deriveCommonSuperName(type2, type1);
-        } catch (CaesiumException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            second = deriveCommonSuperName(typeSecund, typeFirst);
+        } catch (CaesiumMissingDependencyException e) {
+            log.info(e.getMessage());
         }
 
-        if (!"java/lang/Object".equals(first))
+        if (!OBJECT_REFERENCE_NAME.equals(first))
             return first;
 
-        if (!"java/lang/Object".equals(second))
+        if (!OBJECT_REFERENCE_NAME.equals(second))
             return second;
 
         try {
-            return getCommonSuperClass(returnClazz(type1).superName, returnClazz(type2).superName);
-        } catch (CaesiumException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            return getCommonSuperClass(returnClazz(typeFirst).superName, returnClazz(typeSecund).superName);
+        } catch (final CaesiumException caesiumException) {
+            log.info(caesiumException.getMessage());
         }
 
-        return "java/lang/Object";
+        return OBJECT_REFERENCE_NAME;
     }
 
-    private String deriveCommonSuperName(String type1, String type2) throws CaesiumException {
-        ClassNode first = returnClazz(type1);
-        ClassNode second = returnClazz(type2);
-        if (isAssignableFrom(type1, type2))
-            return type1;
-        else if (isAssignableFrom(type2, type1))
-            return type2;
+    private String deriveCommonSuperName(String typeFirst, String typeSecund) throws CaesiumException {
+        ClassNode first = returnClazz(typeFirst);
+        ClassNode second = returnClazz(typeSecund);
+        if (isAssignableFrom(typeFirst, typeSecund))
+            return typeFirst;
+        else if (isAssignableFrom(typeSecund, typeFirst))
+            return typeSecund;
         else if (Modifier.isInterface(first.access) || Modifier.isInterface(second.access))
-            return "java/lang/Object";
+            return OBJECT_REFERENCE_NAME;
         else {
             do {
-                type1 = first.superName;
-                first = returnClazz(type1);
-            } while (!isAssignableFrom(type1, type2));
-            return type1;
+                typeFirst = first.superName;
+                first = returnClazz(typeFirst);
+            } while (!isAssignableFrom(typeFirst, typeSecund));
+            return typeFirst;
         }
     }
 
-    private ClassNode returnClazz(String ref) throws CaesiumException {
-        ClassWrapper clazz = PreRuntime.getClassPath().get(ref);
+    private ClassNode returnClazz(String ref) throws CaesiumMissingDependencyException {
+        final ClassWrapper clazz = PreRuntime.getClassPath().get(ref);
         if (clazz == null) {
-            JOptionPane.showMessageDialog(null, "Couldn't find " + ref + " in classpath.", "Error", JOptionPane.ERROR_MESSAGE);
-            throw new CaesiumException(ref + " does not exist in classpath!", null);
+            missingInClasspath.add(ref);
+            log.error("{} does not exist in classpath.", ref);
+            throw new CaesiumMissingDependencyException(ref, " does not exist in classpath!");
         }
 
         return clazz.node;
     }
 
     private boolean isAssignableFrom(String type1, String type2) throws CaesiumException {
-        if ("java/lang/Object".equals(type1))
+        if (OBJECT_REFERENCE_NAME.equals(type1))
             return true;
 
         if (type1.equals(type2))
@@ -120,4 +133,5 @@ public class CaesiumClassWriter extends ClassWriter {
 
         return PreRuntime.getHierarchy().get(ref);
     }
+
 }

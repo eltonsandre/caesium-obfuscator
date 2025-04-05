@@ -1,11 +1,14 @@
 package dev.sim0n.caesium;
 
+import dev.sim0n.caesium.exception.CaesiumMissingDependencyException;
 import dev.sim0n.caesium.exception.CaesiumException;
 import dev.sim0n.caesium.util.OSUtil;
 import dev.sim0n.caesium.util.classwriter.ClassTree;
 import dev.sim0n.caesium.util.wrapper.impl.ClassWrapper;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
 
@@ -18,6 +21,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -27,12 +31,19 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
+@Log4j2
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class PreRuntime {
 
+    @Getter
     private static final Map<String, ClassWrapper> classPath = new HashMap<>();
+
+    @Getter
     private static final Map<String, ClassWrapper> classes = new HashMap<>();
+
+    @Getter
     private static final Map<String, ClassTree> hierarchy = new HashMap<>();
+
     public static final Set<String> libraries = new LinkedHashSet<>();
     public static final Set<String> classPaths = new LinkedHashSet<>();
 
@@ -194,15 +205,15 @@ public final class PreRuntime {
                 tree.parentClasses.add(classWrapper.node.superName);
                 ClassWrapper superClass = classPath.get(classWrapper.node.superName);
                 if (superClass == null)
-                    throw new CaesiumException(classWrapper.node.superName + " is missing in the classpath.", null);
+                    throw new CaesiumMissingDependencyException(classWrapper.node.superName, "is missing in the classpath.");
                 buildHierarchy(superClass, classWrapper);
             }
             if (classWrapper.node.interfaces != null && !classWrapper.node.interfaces.isEmpty()) {
-                for (String s : classWrapper.node.interfaces) {
-                    tree.parentClasses.add(s);
-                    ClassWrapper interfaceClass = classPath.get(s);
+                for (String interfaceFqdn : classWrapper.node.interfaces) {
+                    tree.parentClasses.add(interfaceFqdn);
+                    ClassWrapper interfaceClass = classPath.get(interfaceFqdn);
                     if (interfaceClass == null)
-                        throw new CaesiumException(s + " is missing in the classpath.", null);
+                        throw new CaesiumMissingDependencyException(interfaceFqdn);
 
                     buildHierarchy(interfaceClass, classWrapper);
                 }
@@ -215,25 +226,19 @@ public final class PreRuntime {
     }
 
     public static void buildInheritance() {
+        Set<String> missingInClasspath = new HashSet<>();
         classes.values().forEach(classWrapper -> {
             try {
                 buildHierarchy(classWrapper, null);
-            } catch (CaesiumException e) {
-                e.printStackTrace();
+            } catch (final CaesiumMissingDependencyException dependencyException) {
+                log.error("Error while building inheritance hierarchy: {}", dependencyException.getMessage());
+                missingInClasspath.add(dependencyException.getReference());
+            } catch (final Exception e) {
+                log.error("Error while building inheritance hierarchy: {}", e.getMessage());
             }
         });
-    }
 
-    public static Map<String, ClassWrapper> getClassPath() {
-        return classPath;
-    }
-
-    public static Map<String, ClassWrapper> getClasses() {
-        return classes;
-    }
-
-    public static Map<String, ClassTree> getHierarchy() {
-        return hierarchy;
+        log.info("missingInClasspath size: {}", missingInClasspath.size());
     }
 
 }

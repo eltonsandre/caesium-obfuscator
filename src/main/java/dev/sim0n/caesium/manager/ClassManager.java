@@ -6,12 +6,15 @@ import dev.sim0n.caesium.exception.CaesiumException;
 import dev.sim0n.caesium.mutator.impl.ClassFolderMutator;
 import dev.sim0n.caesium.mutator.impl.crasher.ImageCrashMutator;
 import dev.sim0n.caesium.util.ByteUtil;
+import dev.sim0n.caesium.util.classwriter.CaesiumClassWriter;
 import dev.sim0n.caesium.util.wrapper.impl.ClassWrapper;
 import lombok.Getter;
 import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.tree.ClassNode;
 
+import javax.swing.*;
 import java.io.*;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -23,6 +26,7 @@ import java.util.zip.ZipOutputStream;
 
 @Getter
 public class ClassManager {
+
     private final Caesium caesium = Caesium.getInstance();
 
     private final MutatorManager mutatorManager = caesium.getMutatorManager();
@@ -34,10 +38,10 @@ public class ClassManager {
 
     private final ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream();
 
-    public void parseJar(File input) throws Exception {
+    public void parseJar(File input) throws IOException {
         logger.info("Loading classes...");
 
-        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(input))) {
+        try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(input.toPath()))) {
             ZipEntry entry;
 
             while ((entry = zis.getNextEntry()) != null) {
@@ -71,7 +75,7 @@ public class ClassManager {
         caesium.separator();
     }
 
-    public void handleMutation() throws Exception {
+    public void handleMutation() throws IOException {
         try (ZipOutputStream out = new ZipOutputStream(outputBuffer)) {
             Optional<ImageCrashMutator> imageCrashMutator = Optional.ofNullable(mutatorManager.getMutator(ImageCrashMutator.class));
             Optional<ClassFolderMutator> classFolderMutator = Optional.ofNullable(mutatorManager.getMutator(ClassFolderMutator.class));
@@ -87,6 +91,7 @@ public class ClassManager {
                 classes.put(wrapper, String.format("%s.class", wrapper.node.name));
             });
 
+            String styleInline = "width: auto;height:210px;border: 13px solid #bed5cd;overflow-x: scroll;overflow-y: hidden;white-space: nowrap;";
             classes.forEach((node, name) -> {
                 mutatorManager.handleMutation(node);
 
@@ -95,7 +100,24 @@ public class ClassManager {
                         name += "/";
 
                     out.putNextEntry(new ZipEntry(name));
-                    out.write(ByteUtil.getClassBytes(node.node));
+
+                    byte[] classBytes;
+                    CaesiumClassWriter classWriter = null;
+                    try {
+                        classWriter = ByteUtil.getClassWriter(node.node);
+                        classBytes = classWriter.toByteArray();
+                        out.write(classBytes);
+                        if (!classWriter.getMissingInClasspath().isEmpty()) {
+                            JOptionPane.showMessageDialog(null,
+                                    "<html><b>Couldn't find referencies in classpath:</b><br><div style=" + styleInline + ">" +
+                                            classWriter.getMissingInClasspath().toString().replace(", ", "<br>") +
+                                            "</div></html>",
+                                    "Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } catch (Exception e) {
+                        throw e;
+                    }
+
 
                     if (hideClasses.get()) { // generate a bunch of fake classes
                         String finalName = name;
@@ -104,12 +126,14 @@ public class ClassManager {
                                 .forEach(i -> {
                                     try {
                                         out.putNextEntry(new ZipEntry(String.format("%scaesium_%d.class", finalName, i ^ 27)));
-                                        out.write(new byte[] { 0 });
+                                        out.write(new byte[]{0});
                                     } catch (Exception e) {
                                         e.printStackTrace();
                                     }
                                 });
                     }
+                } catch (CaesiumException e) {
+                    e.printStackTrace();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -130,17 +154,16 @@ public class ClassManager {
 
     /**
      * Exports {@param output}
+     *
      * @param output The obfuscated file to export
      * @throws CaesiumException If unable to write output data
      */
     public void exportJar(File output) throws CaesiumException {
-        try {
-            FileOutputStream fos = new FileOutputStream(output);
-
+        try (FileOutputStream fos = new FileOutputStream(output)) {
             fos.write(outputBuffer.toByteArray());
-            fos.close();
         } catch (IOException e) {
             throw new CaesiumException("Failed to write output data", e);
         }
     }
+
 }

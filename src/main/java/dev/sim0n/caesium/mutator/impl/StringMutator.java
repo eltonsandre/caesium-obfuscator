@@ -6,18 +6,40 @@ import dev.sim0n.caesium.util.ASMUtil;
 import dev.sim0n.caesium.util.StringUtil;
 import dev.sim0n.caesium.util.wrapper.impl.ClassWrapper;
 import lombok.Getter;
-import org.objectweb.asm.*;
-import org.objectweb.asm.tree.*;
+import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.Handle;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.InvokeDynamicInsnNode;
+import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TypeInsnNode;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.DESKeySpec;
 import javax.crypto.spec.IvParameterSpec;
-import java.nio.charset.Charset;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class StringMutator extends ClassMutator {
+
+    private static final String BSM_SIG = "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/Object;";
+    private static final String STRING_FQDN_DESCRIPTOR = "[Ljava/lang/String;";
+    private static final String EXCEPTION_FQDN_DESCRIPTOR = "java/lang/Exception";
+
     @Getter
     private final Set<String> exclusions = new HashSet<>();
 
@@ -34,7 +56,6 @@ public class StringMutator extends ClassMutator {
     private String initName;
 
     private String bsmName = getRandomName();
-    private String bsmSig = "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/Object;";
     private Handle bsmHandle = null;
 
     private final List<String> strings = new ArrayList<>();
@@ -65,15 +86,15 @@ public class StringMutator extends ClassMutator {
         initName = getRandomName();
 
         bsmName = getRandomName();
-        bsmHandle = new Handle(H_INVOKESTATIC, target.name, bsmName, bsmSig);
+        bsmHandle = new Handle(H_INVOKESTATIC, target.name, bsmName, BSM_SIG, false);
 
         {
-            FieldVisitor fv = target.visitField(ACC_PRIVATE | ACC_STATIC, stringField1, "[Ljava/lang/String;", null, null);
+            FieldVisitor fv = target.visitField(ACC_PRIVATE | ACC_STATIC, stringField1, STRING_FQDN_DESCRIPTOR, null, null);
             fv.visitEnd();
         }
 
         {
-            FieldVisitor fv = target.visitField(ACC_PRIVATE | ACC_STATIC, stringField2, "[Ljava/lang/String;", null, null);
+            FieldVisitor fv = target.visitField(ACC_PRIVATE | ACC_STATIC, stringField2, STRING_FQDN_DESCRIPTOR, null, null);
             fv.visitEnd();
         }
 
@@ -180,6 +201,7 @@ public class StringMutator extends ClassMutator {
 
     /**
      * Encrypts a string using DES
+     *
      * @param s The string to encrypt
      * @return The encrypted string
      */
@@ -209,7 +231,7 @@ public class StringMutator extends ClassMutator {
     }
 
     private void makeCallSite(ClassNode cw) {
-        MethodVisitor mv = cw.visitMethod(ACC_PRIVATE + ACC_STATIC, bsmName, "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/Object;", null, null);
+        MethodVisitor mv = cw.visitMethod(ACC_PRIVATE + ACC_STATIC, bsmName, BSM_SIG, null, null);
         mv.visitCode();
         Label l0 = new Label();
         Label l1 = new Label();
@@ -217,7 +239,7 @@ public class StringMutator extends ClassMutator {
 
         String typeName = "L" + cw.name.replace(".", "/") + ";";
 
-        mv.visitTryCatchBlock(l0, l1, l2, "java/lang/Exception");
+        mv.visitTryCatchBlock(l0, l1, l2, EXCEPTION_FQDN_DESCRIPTOR);
         mv.visitLabel(l0);
         mv.visitLineNumber(73, l0);
         mv.visitTypeInsn(NEW, "java/lang/invoke/MutableCallSite");
@@ -237,7 +259,7 @@ public class StringMutator extends ClassMutator {
         mv.visitInsn(ARETURN);
         mv.visitLabel(l2);
         mv.visitLineNumber(74, l2);
-        mv.visitFrame(F_SAME1, 0, null, 1, new Object[]{"java/lang/Exception"});
+        mv.visitFrame(F_SAME1, 0, null, 1, new Object[]{EXCEPTION_FQDN_DESCRIPTOR});
         mv.visitVarInsn(ASTORE, 3);
         Label l3 = new Label();
         mv.visitLabel(l3);
@@ -268,6 +290,7 @@ public class StringMutator extends ClassMutator {
 
     /**
      * Generates a decrypt method
+     *
      * @param owner The class owner
      * @return A string decryption method
      */
@@ -277,7 +300,7 @@ public class StringMutator extends ClassMutator {
         Label l0 = new Label();
         Label l1 = new Label();
         Label l2 = new Label();
-        mv.visitTryCatchBlock(l0, l1, l2, "java/lang/Exception");
+        mv.visitTryCatchBlock(l0, l1, l2, EXCEPTION_FQDN_DESCRIPTOR);
         Label l3 = new Label();
         mv.visitLabel(l3);
         mv.visitLineNumber(57, l3);
@@ -295,7 +318,7 @@ public class StringMutator extends ClassMutator {
         Label l5 = new Label();
         mv.visitLabel(l5);
         mv.visitLineNumber(60, l5);
-        mv.visitFieldInsn(GETSTATIC, owner.name, stringField1, "[Ljava/lang/String;");
+        mv.visitFieldInsn(GETSTATIC, owner.name, stringField1, STRING_FQDN_DESCRIPTOR);
         mv.visitVarInsn(ILOAD, 0);
         mv.visitInsn(AALOAD);
         Label l6 = new Label();
@@ -317,7 +340,7 @@ public class StringMutator extends ClassMutator {
         mv.visitJumpInsn(GOTO, l8);
         mv.visitLabel(l2);
         mv.visitLineNumber(67, l2);
-        mv.visitFrame(F_SAME1, 0, null, 1, new Object[]{"java/lang/Exception"});
+        mv.visitFrame(F_SAME1, 0, null, 1, new Object[]{EXCEPTION_FQDN_DESCRIPTOR});
         mv.visitVarInsn(ASTORE, 5);
         Label l9 = new Label();
         mv.visitLabel(l9);
@@ -396,13 +419,13 @@ public class StringMutator extends ClassMutator {
         Label l16 = new Label();
         mv.visitLabel(l16);
         mv.visitLineNumber(81, l16);
-        mv.visitFieldInsn(GETSTATIC, owner.name, stringField1, "[Ljava/lang/String;");
+        mv.visitFieldInsn(GETSTATIC, owner.name, stringField1, STRING_FQDN_DESCRIPTOR);
         mv.visitVarInsn(ILOAD, 0);
         mv.visitTypeInsn(NEW, "java/lang/String");
         mv.visitInsn(DUP);
         mv.visitVarInsn(ALOAD, 3);
         mv.visitMethodInsn(INVOKESTATIC, "java/util/Base64", "getDecoder", "()Ljava/util/Base64$Decoder;", false);
-        mv.visitFieldInsn(GETSTATIC, owner.name, stringField2, "[Ljava/lang/String;");
+        mv.visitFieldInsn(GETSTATIC, owner.name, stringField2, STRING_FQDN_DESCRIPTOR);
         mv.visitVarInsn(ILOAD, 0);
         mv.visitInsn(AALOAD);
         mv.visitMethodInsn(INVOKEVIRTUAL, "java/util/Base64$Decoder", "decode", "(Ljava/lang/String;)[B", false);
@@ -412,7 +435,7 @@ public class StringMutator extends ClassMutator {
         mv.visitLabel(l6);
         mv.visitLineNumber(84, l6);
         mv.visitFrame(F_CHOP, 3, null, 0, null);
-        mv.visitFieldInsn(GETSTATIC, owner.name, stringField1, "[Ljava/lang/String;");
+        mv.visitFieldInsn(GETSTATIC, owner.name, stringField1, STRING_FQDN_DESCRIPTOR);
         mv.visitVarInsn(ILOAD, 0);
         mv.visitInsn(AALOAD);
         mv.visitInsn(ARETURN);
@@ -432,13 +455,13 @@ public class StringMutator extends ClassMutator {
         instructions.add(l0);
         instructions.add(ASMUtil.getOptimisedInt(stringCount));
         instructions.add(new TypeInsnNode(ANEWARRAY, "java/lang/String"));
-        instructions.add(new FieldInsnNode(PUTSTATIC, owner.name, stringField1, "[Ljava/lang/String;"));
+        instructions.add(new FieldInsnNode(PUTSTATIC, owner.name, stringField1, STRING_FQDN_DESCRIPTOR  ));
 
         LabelNode l1 = new LabelNode();
         instructions.add(l1);
         instructions.add(ASMUtil.getOptimisedInt(stringCount));
         instructions.add(new TypeInsnNode(ANEWARRAY, "java/lang/String"));
-        instructions.add(new FieldInsnNode(PUTSTATIC, owner.name, stringField2, "[Ljava/lang/String;"));
+        instructions.add(new FieldInsnNode(PUTSTATIC, owner.name, stringField2, STRING_FQDN_DESCRIPTOR));
 
         LabelNode l2 = new LabelNode();
         instructions.add(l2);
@@ -448,23 +471,23 @@ public class StringMutator extends ClassMutator {
     }
 
     public MethodNode makeInit(ClassNode owner) {
-        MethodNode mv = new MethodNode(ACC_PRIVATE + ACC_STATIC, initName,"()V", null,null);
+        MethodNode mv = new MethodNode(ACC_PRIVATE + ACC_STATIC, initName, "()V", null, null);
 
         mv.visitCode();
         Label l0 = new Label();
         Label l1 = new Label();
         Label l2 = new Label();
-        //mv.visitTryCatchBlock(l0, l1, l2, "java/lang/Exception");
+        //mv.visitTryCatchBlock(l0, l1, l2, EXCEPTION_FQDN_DESCRIPTOR);
         Label l3 = new Label();
         mv.visitLabel(l3);
         mv.visitLineNumber(95, l3);
-        mv.visitLdcInsn(new Long(key3));
+        mv.visitLdcInsn(key3);
         mv.visitFieldInsn(PUTSTATIC, owner.name, keyField, "J");
         Label l4 = new Label();
         mv.visitLabel(l4);
         mv.visitLineNumber(97, l4);
         mv.visitFieldInsn(GETSTATIC, owner.name, keyField, "J");
-        mv.visitLdcInsn(new Long(key2));
+        mv.visitLdcInsn(key2);
         mv.visitInsn(LXOR);
         mv.visitVarInsn(LSTORE, 0);
         mv.visitLabel(l0);
@@ -575,7 +598,7 @@ public class StringMutator extends ClassMutator {
         mv.visitLineNumber(118, l17);
         mv.visitFrame(F_SAME, 0, null, 0, null);
         for (int i = 0; i < stringCount; i++) {
-            mv.visitFieldInsn(GETSTATIC, owner.name, stringField2, "[Ljava/lang/String;");
+            mv.visitFieldInsn(GETSTATIC, owner.name, stringField2, STRING_FQDN_DESCRIPTOR);
 
             ASMUtil.visitOptimisedInt(mv, i);
 
@@ -592,7 +615,7 @@ public class StringMutator extends ClassMutator {
         mv.visitFrame(F_SAME, 0, null, 0, null);
         // generate fake strings
         for (int i = 0; i < stringCount; i++) {
-            mv.visitFieldInsn(GETSTATIC, owner.name, stringField2, "[Ljava/lang/String;");
+            mv.visitFieldInsn(GETSTATIC, owner.name, stringField2, STRING_FQDN_DESCRIPTOR);
 
             ASMUtil.visitOptimisedInt(mv, i);
 
@@ -610,7 +633,7 @@ public class StringMutator extends ClassMutator {
         // TODO: this can break classes with huge amount of strings
         // generate completely random fake strings
         for (int i = 0; i < 1; i++) {
-            mv.visitFieldInsn(GETSTATIC, owner.name, stringField2, "[Ljava/lang/String;");
+            mv.visitFieldInsn(GETSTATIC, owner.name, stringField2, STRING_FQDN_DESCRIPTOR);
 
             ASMUtil.visitOptimisedInt(mv, i);
 
@@ -627,7 +650,7 @@ public class StringMutator extends ClassMutator {
         mv.visitFrame(F_SAME, 0, null, 0, null);
         // generate completely random fake strings
         for (int i = 0; i < 1; i++) {
-            mv.visitFieldInsn(GETSTATIC, owner.name, stringField2, "[Ljava/lang/String;");
+            mv.visitFieldInsn(GETSTATIC, owner.name, stringField2, STRING_FQDN_DESCRIPTOR);
 
             ASMUtil.visitOptimisedInt(mv, i);
 
@@ -647,13 +670,13 @@ public class StringMutator extends ClassMutator {
         mv.visitJumpInsn(GOTO, l25);
         mv.visitLabel(l2);
         mv.visitLineNumber(135, l2);
-        mv.visitFrame(F_SAME1, 0, null, 1, new Object[]{"java/lang/Exception"});
+        mv.visitFrame(F_SAME1, 0, null, 1, new Object[]{EXCEPTION_FQDN_DESCRIPTOR});
         mv.visitVarInsn(ASTORE, 2);
         Label l26 = new Label();
         mv.visitLabel(l26);
         mv.visitLineNumber(136, l26);
         mv.visitVarInsn(ALOAD, 2);
-        mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Exception", "printStackTrace", "()V", false);
+        mv.visitMethodInsn(INVOKEVIRTUAL, EXCEPTION_FQDN_DESCRIPTOR, "printStackTrace", "()V", false);
         mv.visitLabel(l25);
         mv.visitLineNumber(138, l25);
         mv.visitFrame(F_SAME, 0, null, 0, null);

@@ -57,7 +57,7 @@ public class ReferenceMutator extends ClassMutator {
         bsmSig = String.format("(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;%s)Ljava/lang/Object;", extraDesc);
         String targetName = wrapper.node.name;
 
-        bootstrapMethodHandle = new Handle(H_INVOKESTATIC, targetName, bsmName, bsmSig);
+        bootstrapMethodHandle = new Handle(H_INVOKESTATIC, targetName, bsmName, bsmSig, false);
 
         // don't want to deal with sub classes
         if (targetName.contains("$"))
