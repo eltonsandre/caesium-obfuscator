@@ -3,6 +3,7 @@ package dev.eltonsandre.caesium.mutator.impl.crasher;
 import dev.eltonsandre.caesium.mutator.ClassMutator;
 import dev.eltonsandre.caesium.util.wrapper.impl.ClassWrapper;
 import joptsimple.internal.Strings;
+import lombok.extern.log4j.Log4j2;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 
@@ -11,6 +12,7 @@ import java.util.ArrayList;
 /**
  * This generates a bunch of invisible annotations which will cause procyon to be very slow
  */
+@Log4j2
 public class BadAnnotationMutator extends ClassMutator {
 
     private static final String STRING = Strings.repeat('\n', 40);
@@ -50,6 +52,6 @@ public class BadAnnotationMutator extends ClassMutator {
 
     @Override
     public void handleFinish() {
-        logger.info("Added {} annotations", counter);
+        log.info("Added {} annotations", counter);
     }
 }

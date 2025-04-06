@@ -1,20 +1,19 @@
 package dev.eltonsandre.caesium.util.classwriter;
 
-import java.lang.reflect.Modifier;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.Set;
-
+import dev.eltonsandre.caesium.PreRuntime;
+import dev.eltonsandre.caesium.exception.CaesiumException;
 import dev.eltonsandre.caesium.exception.CaesiumMissingDependencyException;
+import dev.eltonsandre.caesium.util.wrapper.impl.ClassWrapper;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
 
-import dev.eltonsandre.caesium.PreRuntime;
-import dev.eltonsandre.caesium.exception.CaesiumException;
-import dev.eltonsandre.caesium.util.wrapper.impl.ClassWrapper;
+import java.lang.reflect.Modifier;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.Set;
 
 @Log4j2
 public class CaesiumClassWriter extends ClassWriter {

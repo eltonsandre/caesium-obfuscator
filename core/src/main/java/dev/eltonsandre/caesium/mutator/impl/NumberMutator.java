@@ -4,11 +4,13 @@ import dev.eltonsandre.caesium.mutator.ClassMutator;
 import dev.eltonsandre.caesium.util.ASMUtil;
 import dev.eltonsandre.caesium.util.wrapper.impl.ClassWrapper;
 import dev.eltonsandre.caesium.util.wrapper.impl.MethodWrapper;
+import lombok.extern.log4j.Log4j2;
 import org.objectweb.asm.tree.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Log4j2
 public class NumberMutator extends ClassMutator {
     private final InsnList deobfInsns = new InsnList();
 
@@ -98,7 +100,7 @@ public class NumberMutator extends ClassMutator {
 
     @Override
     public void handleFinish() {
-        logger.info("Mutated {} numbers", counter);
+        log.info("Mutated {} numbers", counter);
     }
 
     /**

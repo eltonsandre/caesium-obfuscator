@@ -4,6 +4,7 @@ import com.google.common.base.Strings;
 import dev.eltonsandre.caesium.mutator.ClassMutator;
 import dev.eltonsandre.caesium.util.wrapper.impl.ClassWrapper;
 import dev.eltonsandre.caesium.util.wrapper.impl.MethodWrapper;
+import lombok.extern.log4j.Log4j2;
 import org.objectweb.asm.*;
 import org.objectweb.asm.tree.*;
 
@@ -16,6 +17,7 @@ import java.util.stream.Stream;
 /**
  * This hides method invocations with invokedynamics
  */
+@Log4j2
 public class ReferenceMutator extends ClassMutator {
     // 0 = light
     // 1 = normal
@@ -148,7 +150,7 @@ public class ReferenceMutator extends ClassMutator {
 
     @Override
     public void handleFinish() {
-        logger.info("Hid {} method references", counter);
+        log.info("Hid {} method references", counter);
     }
 
     /**

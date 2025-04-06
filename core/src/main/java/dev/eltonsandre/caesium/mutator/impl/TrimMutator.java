@@ -2,10 +2,12 @@ package dev.eltonsandre.caesium.mutator.impl;
 
 import dev.eltonsandre.caesium.mutator.ClassMutator;
 import dev.eltonsandre.caesium.util.wrapper.impl.ClassWrapper;
+import lombok.extern.log4j.Log4j2;
 import org.objectweb.asm.tree.*;
 
 import java.util.stream.Stream;
 
+@Log4j2
 public class TrimMutator extends ClassMutator {
 
     @Override
@@ -137,7 +139,7 @@ public class TrimMutator extends ClassMutator {
 
     @Override
     public void handleFinish() {
-        logger.info(String.format("Trimmed %d math functions", counter));
+        log.info(String.format("Trimmed %d math functions", counter));
     }
 
 }

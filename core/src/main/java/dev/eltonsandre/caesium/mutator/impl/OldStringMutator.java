@@ -5,6 +5,7 @@ import dev.eltonsandre.caesium.util.ASMUtil;
 import dev.eltonsandre.caesium.util.wrapper.impl.ClassWrapper;
 import dev.eltonsandre.caesium.util.wrapper.impl.MethodWrapper;
 import lombok.Getter;
+import lombok.extern.log4j.Log4j2;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.tree.*;
@@ -16,6 +17,7 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Stream;
 
+@Log4j2
 public class OldStringMutator extends ClassMutator {
     @Getter
     private final Set<String> exclusions = new HashSet<>();
@@ -157,7 +159,7 @@ public class OldStringMutator extends ClassMutator {
 
     @Override
     public void handleFinish() {
-        logger.info("Mutated {} string literals", counter);
+        log.info("Mutated {} string literals", counter);
     }
 
     /**

@@ -2,11 +2,13 @@ package dev.eltonsandre.caesium.mutator.impl.crasher;
 
 import dev.eltonsandre.caesium.mutator.ClassMutator;
 import dev.eltonsandre.caesium.util.wrapper.impl.ClassWrapper;
+import lombok.extern.log4j.Log4j2;
 import org.objectweb.asm.tree.ClassNode;
 
 /**
  * This inserts a class that will crash almost every gui based RE tool
  */
+@Log4j2
 public class ImageCrashMutator extends ClassMutator {
 
     @Override
@@ -25,6 +27,6 @@ public class ImageCrashMutator extends ClassMutator {
 
     @Override
     public void handleFinish() {
-        logger.info("Inserted crash class");
+        log.info("Inserted crash class");
     }
 }

@@ -3,6 +3,7 @@ package dev.eltonsandre.caesium.mutator.impl;
 import dev.eltonsandre.caesium.mutator.ClassMutator;
 import dev.eltonsandre.caesium.util.wrapper.impl.ClassWrapper;
 import dev.eltonsandre.caesium.util.wrapper.impl.MethodWrapper;
+import lombok.extern.log4j.Log4j2;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.IntInsnNode;
@@ -15,6 +16,7 @@ import java.util.stream.Stream;
 /**
  * This will generate useless instructions which (may) make it more annoying for the attacker to deal with
  */
+@Log4j2
 public class PolymorphMutator extends ClassMutator {
 
     @Override
@@ -51,6 +53,6 @@ public class PolymorphMutator extends ClassMutator {
 
     @Override
     public void handleFinish() {
-        logger.info("Inserted {} useless instructions", counter);
+        log.info("Inserted {} useless instructions", counter);
     }
 }

@@ -2,10 +2,12 @@ package dev.eltonsandre.caesium.mutator.impl;
 
 import dev.eltonsandre.caesium.mutator.ClassMutator;
 import dev.eltonsandre.caesium.util.wrapper.impl.ClassWrapper;
+import lombok.extern.log4j.Log4j2;
 
 import java.util.Collections;
 
 // This will shuffle class members, however this can break reflection
+@Log4j2
 public class ShuffleMutator extends ClassMutator {
     @Override
     public void handle(ClassWrapper wrapper) {
@@ -17,6 +19,6 @@ public class ShuffleMutator extends ClassMutator {
 
     @Override
     public void handleFinish() {
-        logger.info("Shuffled {} members", counter);
+        log.info("Shuffled {} members", counter);
     }
 }

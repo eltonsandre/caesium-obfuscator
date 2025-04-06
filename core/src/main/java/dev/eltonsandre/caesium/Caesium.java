@@ -9,6 +9,7 @@ import dev.eltonsandre.caesium.util.Dictionary;
 import dev.eltonsandre.caesium.util.VersionUtil;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -19,6 +20,7 @@ import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+@Log4j2
 @Getter
 public class Caesium {
     @Getter
@@ -49,7 +51,7 @@ public class Caesium {
         checkNotNull(output, "Output can't be null");
 
         separator();
-        logger.info("Caesium version {}", VERSION);
+        log.info("Caesium version {}", VERSION);
         separator();
 
         classManager.parseJar(input);
@@ -59,7 +61,7 @@ public class Caesium {
         double inputKB = ByteUtil.bytesToKB(input.length());
         double outputKB = ByteUtil.bytesToKB(output.length());
 
-        logger.info("Successfully obfuscated target jar. {}Kb -> {}Kb", inputKB, outputKB);
+        log.info("Successfully obfuscated target jar. {}Kb -> {}Kb\n\n", inputKB, outputKB);
 
         return 0;
     }

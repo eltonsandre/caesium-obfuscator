@@ -7,12 +7,15 @@ import dev.eltonsandre.caesium.mutator.impl.crasher.BadAnnotationMutator;
 import dev.eltonsandre.caesium.mutator.impl.crasher.ImageCrashMutator;
 import dev.eltonsandre.caesium.util.wrapper.impl.ClassWrapper;
 import lombok.Getter;
+import lombok.extern.log4j.Log4j2;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Log4j2
 @Getter
 public class MutatorManager {
+
     private final Caesium caesium = Caesium.getInstance();
 
     private final List<ClassMutator> mutators = new ArrayList<>();
@@ -57,7 +60,7 @@ public class MutatorManager {
                 .forEach(mutator -> {
                     mutator.handleFinish();
 
-                    caesium.separator();
+                    log.info(Caesium.SEPARATOR);
                 });
     }
 }

@@ -4,11 +4,13 @@ import dev.eltonsandre.caesium.mutator.ClassMutator;
 import dev.eltonsandre.caesium.util.wrapper.impl.ClassWrapper;
 import dev.eltonsandre.caesium.util.wrapper.impl.MethodWrapper;
 import lombok.Setter;
+import lombok.extern.log4j.Log4j2;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.LineNumberNode;
 
 import java.util.stream.Stream;
 
+@Log4j2
 @Setter
 public class LineNumberMutator extends ClassMutator {
 
@@ -68,6 +70,6 @@ public class LineNumberMutator extends ClassMutator {
                 break;
         }
 
-        logger.info(output, counter);
+        log.info(output, counter);
     }
 }

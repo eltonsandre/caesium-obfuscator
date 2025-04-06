@@ -4,10 +4,12 @@ import dev.eltonsandre.caesium.mutator.ClassMutator;
 import dev.eltonsandre.caesium.util.wrapper.impl.ClassWrapper;
 import dev.eltonsandre.caesium.util.wrapper.impl.MethodWrapper;
 import lombok.Setter;
+import lombok.extern.log4j.Log4j2;
 
+@Log4j2
+@Setter
 public class LocalVariableMutator extends ClassMutator {
 
-    @Setter
     private int type = 0;
 
     @Override
@@ -52,6 +54,6 @@ public class LocalVariableMutator extends ClassMutator {
                 break;
         }
 
-        logger.info(output, counter);
+        log.info(output, counter);
     }
 }

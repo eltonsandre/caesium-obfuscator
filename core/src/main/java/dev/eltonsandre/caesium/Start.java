@@ -4,10 +4,13 @@ import com.google.common.collect.ImmutableList;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
+import lombok.extern.log4j.Log4j2;
 
 import java.io.File;
 
+@Log4j2
 public class Start {
+
     public static void main(String[] args) {
         OptionParser optionParser = new OptionParser();
         OptionSpec<Void> help = optionParser
@@ -33,8 +36,8 @@ public class Start {
 
             Caesium caesium = new Caesium();
 
-            if (caesium.run(inputFile, outputFile) != 0) {
-                Caesium.getLogger().warn("Exited with non default exit code.");
+            if (!caesium.run(inputFile, outputFile)) {
+                log.warn("Exited with non default exit code.");
             }
         } catch (Exception e) {
             e.printStackTrace();

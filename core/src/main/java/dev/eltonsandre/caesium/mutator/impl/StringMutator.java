@@ -6,6 +6,7 @@ import dev.eltonsandre.caesium.util.ASMUtil;
 import dev.eltonsandre.caesium.util.StringUtil;
 import dev.eltonsandre.caesium.util.wrapper.impl.ClassWrapper;
 import lombok.Getter;
+import lombok.extern.log4j.Log4j2;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
@@ -34,6 +35,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
+@Log4j2
 public class StringMutator extends ClassMutator {
 
     private static final String BSM_SIG = "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/Object;";
@@ -195,7 +197,7 @@ public class StringMutator extends ClassMutator {
 
     @Override
     public void handleFinish() {
-        logger.info("encrypted {} string literals", counter);
+        log.info("encrypted {} string literals", counter);
     }
 
 
