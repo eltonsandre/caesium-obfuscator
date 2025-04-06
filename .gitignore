@@ -28,6 +28,7 @@ target
 *.iml
 /.idea/
 /out/
+*/out/
 /.gradle/
 /build/
 /.dev/

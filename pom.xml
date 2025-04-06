@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>dev.sim0n</groupId>
+    <groupId>dev.eltonsandre</groupId>
     <artifactId>caesium</artifactId>
     <version>1.0.10</version>
 
@@ -24,7 +24,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>dev.sim0n.caesium.gui.CGui</mainClass>
+                            <mainClass>dev.eltonsandre.caesium.gui.CGui</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -49,7 +49,7 @@
 
         <resources>
             <resource>
-                <directory>src/main/resources</directory>
+                <directory>core/src/main/resources</directory>
                 <filtering>true</filtering>
             </resource>
         </resources>
