@@ -9,26 +9,19 @@ import com.formdev.flatlaf.FlatLightLaf;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
+import dev.eltonsandre.caesium.Caesium;
 import dev.eltonsandre.caesium.CaesiumConfig;
 import dev.eltonsandre.caesium.MutatorRunner;
-import dev.eltonsandre.caesium.Caesium;
 import dev.eltonsandre.caesium.PreRuntime;
+import dev.eltonsandre.caesium.SynchronizedByteArrayOutputStreamWrapper;
+import dev.eltonsandre.caesium.TextAreaAppender;
 import dev.eltonsandre.caesium.exception.CaesiumException;
-import dev.eltonsandre.caesium.manager.MutatorManager;
-import dev.eltonsandre.caesium.mutator.impl.ClassFolderMutator;
-import dev.eltonsandre.caesium.mutator.impl.ControlFlowMutator;
-import dev.eltonsandre.caesium.mutator.impl.LineNumberMutator;
-import dev.eltonsandre.caesium.mutator.impl.LocalVariableMutator;
-import dev.eltonsandre.caesium.mutator.impl.NumberMutator;
-import dev.eltonsandre.caesium.mutator.impl.PolymorphMutator;
-import dev.eltonsandre.caesium.mutator.impl.ReferenceMutator;
-import dev.eltonsandre.caesium.mutator.impl.ShuffleMutator;
-import dev.eltonsandre.caesium.mutator.impl.StringMutator;
-import dev.eltonsandre.caesium.mutator.impl.TrimMutator;
-import dev.eltonsandre.caesium.mutator.impl.crasher.BadAnnotationMutator;
-import dev.eltonsandre.caesium.mutator.impl.crasher.ImageCrashMutator;
 import dev.eltonsandre.caesium.util.Dictionary;
-import lombok.var;
+import lombok.extern.log4j.Log4j2;
+import lombok.val;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Logger;
+import org.apache.logging.log4j.core.layout.PatternLayout;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
@@ -38,21 +31,24 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.Reader;
 import java.io.Writer;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * This entire thing is a mess because it was automatically generated with
  * JFormDesigner
  */
-
+@Log4j2
 public class CGui {
 
     private JPanel contentPane;
@@ -67,16 +63,28 @@ public class CGui {
     private JButton saveProfileButton;
     private JLabel configProfileLabel;
     private ClassPathPanel classpathPanel;
+    private LoggerPanel loggerPanel;
+    private JTabbedPane tabbedPane;
+    private JScrollPane loggerScrollPane;
+    private JButton stopButton;
     private static JFrame appFrame;
 
-    private String currentProfile = "user.home";
+    private String currentProfile = "/home/elton/dados/develop/Caesium/.dev/obfuscation-settings.caesium";
+    //    private String currentProfile = "user.home";
+    private Thread runThread;
 
     public CGui() {
         initComponents();
+        startLog();
     }
 
     public static void main(String[] args) throws HeadlessException, IOException {
-        PreRuntime.loadJavaRuntime();
+        try {
+            PreRuntime.loadJavaRuntime();
+        } catch (CaesiumException e) {
+            JOptionPane.showMessageDialog(null, e.getMessage(), "Load Java Runtime Error", JOptionPane.ERROR_MESSAGE);
+        }
+
         SwingUtilities.invokeLater(() -> {
             appFrame = new JFrame("Caesium Obfuscator");
             URL resource = CGui.class.getClassLoader().getResource("icons/logo.png");
@@ -90,12 +98,40 @@ public class CGui {
             appFrame.pack();
             appFrame.setLocationRelativeTo(appFrame.getOwner());
             appFrame.setVisible(true);
+
         });
+    }
+
+    private void startLog() {
+        PatternLayout.Builder layoutbuilder = PatternLayout.newBuilder().withPattern("%d{HH:mm:ss.SSS} %-5level - %msg%n");
+        // "%-5level
+        // %logger{36} - %msg%n"
+        TextAreaAppender appender = new TextAreaAppender("textLog", null, layoutbuilder.build(), 200, false, null);
+        appender.setTextArea(loggerPanel.getLoggerTextArea());
+        Logger logger = (Logger) LogManager.getRootLogger();
+        appender.start();
+        logger.addAppender(appender);
+
+        SynchronizedByteArrayOutputStreamWrapper rawout = new SynchronizedByteArrayOutputStreamWrapper();
+        // Set new stream for System.out
+        System.setOut(new PrintStream(rawout, true));
+        // Console thread
+        Thread consoleThread = new Thread(() -> {
+            while (!Thread.currentThread().isInterrupted()) {
+                String pendingConsoleOutput = new String(rawout.readEmpty());
+                loggerPanel.getLoggerTextArea().append(pendingConsoleOutput);
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
+        });
+        consoleThread.start();
     }
 
     private static void initTheme() {
         AtomicBoolean themeLigth = new AtomicBoolean(false);
-        File file = new File("./caesium.properties");
+        File file = new File("caesium.properties");
         try (Reader reader = new FileReader(file)) {
             Properties properties = new Properties();
             properties.load(reader);
@@ -113,23 +149,41 @@ public class CGui {
     }
 
     private void initComponents() {
+        stopButton.setVisible(false);
+        stopButton.setText("Stop");
+        stopButton.setToolTipText("Stop");
+        stopButton.setIcon(Icons.loadIconSvgByTheme("stop"));
+
         runMutateButton.setText("Run mutate");
         runMutateButton.setToolTipText("Run mutate");
         runMutateButton.setActionCommand("Running...");
         runMutateButton.setIcon(Icons.loadIconSvgByTheme("runAll"));
         runMutateButton.addActionListener(l -> {
-                    runMutateButton.setEnabled(false);
-                    runMutateButton.setText("Running...");
+                    tabbedPane.setSelectedIndex(5);
+                    loggerPanel.getLoggerTextArea().requestFocus();
+
+                    changeRunMutatorButton(false, "Running...");
+
                     SwingUtilities.invokeLater(() -> {
                         try {
-                            runMutate();
-                        } finally {
-                            runMutateButton.setEnabled(true);
-                            runMutateButton.setText("Run mutate");
+                            runThread = new Thread(() -> {
+                                try {
+                                    runMutate();
+                                } finally {
+                                    changeRunMutatorButton(true, "Run mutate");
+                                }
+                            });
+                            runThread.start();
+                        } catch (Exception exception) {
+                            changeRunMutatorButton(true, "Run mutate");
                         }
                     });
                 }
         );
+        stopButton.addActionListener(l -> {
+            Caesium.STOPED_MUTATOR.set(true);
+            log.info("Stoped by user.");
+        });
 
         loadProfileButton.setText("Load a profile");
         loadProfileButton.setToolTipText("Load a profile");
@@ -183,91 +237,56 @@ public class CGui {
         });
     }
 
+    private void changeRunMutatorButton(final boolean enabled, final String text) {
+        runMutateButton.setEnabled(enabled);
+        runMutateButton.setText(text);
+        stopButton.setVisible(!enabled);
+
+        JScrollBar vertical = loggerScrollPane.getVerticalScrollBar();
+        vertical.setValue(vertical.getMaximum());
+    }
+
     private void runMutate() {
-        var input = new File(mainPanel.inputField.getText());
-        if (!input.exists()) {
-            JOptionPane.showMessageDialog(contentPane, "Unable to find input file", "", JOptionPane.WARNING_MESSAGE);
-            return;
+        val configBuilder = CaesiumConfig.builder()
+                .input(mainPanel.inputField.getText())
+                .output(mainPanel.outputField.getText())
+                .applicationType(mainPanel.applicationTypeComboBox.getSelectedItem().toString())
+
+                .dictionary(Dictionary.values()[mainPanel.dictionaryComboBox.getSelectedIndex()]);
+
+        val mutator = CaesiumConfig.MutatorConfig.builder()
+                .classFolder(mutatorPanel.classFolderMutatorCheckBox.isSelected())
+                .controlFlow(mutatorPanel.controlFlowMutatorCheckBox.isSelected())
+                .crasher(mutatorPanel.imageCrashMutatorCheckBox.isSelected())
+                .number(mutatorPanel.numberMutatorCheckBox.isSelected())
+                .polymorph(mutatorPanel.polymorphMutatorCheckBox.isSelected())
+                .shufflerMembers(mutatorPanel.shuffleMutatorCheckBox.isSelected())
+                .stringLiteral(mutatorPanel.stringLiteralcheckBox.isSelected())
+                .trimmer(mutatorPanel.trimMutatorCheckBox.isSelected())
+
+                .referenceMutation(mutatorPanel.referenceMutatorComboBox.getSelectedIndex())
+                .lineNumberTables(mutatorPanel.lineNumberMutatorComboBox.getSelectedIndex())
+                .localVariableTables(mutatorPanel.localVariableMutatorComboBox.getSelectedIndex());
+
+        configBuilder.mutator(mutator.build());
+
+        Enumeration<String> elements = exclusionsPanel.exclusionStringsModel.elements();
+        Set<String> exclusions = new HashSet<>();
+        while (elements.hasMoreElements()) {
+            exclusions.add(elements.nextElement());
         }
+
+        configBuilder.exclusions(exclusions)
+                .dependencies(joinString(libraryTab.dependenciesListModel.elements()))
+                .classpath(joinString(classpathPanel.classPathListModel.elements()))
+                .build();
+
         try {
-            PreRuntime.loadInput(mainPanel.inputField.getText());
-        } catch (CaesiumException e1) {
-            e1.printStackTrace();
+            MutatorRunner.run(configBuilder.build());
+        } catch (CaesiumException e) {
+            JOptionPane.showMessageDialog(contentPane, e.getMessage(), "", JOptionPane.WARNING_MESSAGE);
         }
 
-        PreRuntime.loadClassPath();
-        PreRuntime.buildInheritance();
-
-        var parent = new File(input.getParent());
-        var output = new File(mainPanel.outputField.getText());
-
-        if (output.exists()) {
-            // we do it this way so we don't have to loop through a specified x amount of times
-            for (int i = 0; i < parent.listFiles().length; i++) {
-                String filePath = String.format("%s.BACKUP-%d", output.getAbsoluteFile(), i);
-                File file = new File(filePath);
-
-                if (!file.exists() && output.renameTo(new File(filePath))) {
-                    output = new File(mainPanel.outputField.getText());
-                    break;
-                }
-            }
-        }
-        var caesium = new Caesium();
-        try {
-            caesium.setDictionary(Dictionary.values()[mainPanel.dictionaryComboBox.getSelectedIndex()]);
-
-            MutatorManager mutatorManager = caesium.getMutatorManager();
-            // string
-            StringMutator stringMutator = mutatorManager.getMutator(StringMutator.class);
-            stringMutator.setEnabled(mutatorPanel.stringLiteralcheckBox.isSelected());
-
-
-            Enumeration<String> elements = exclusionsPanel.exclusionStringsModel.elements();
-
-            while (elements.hasMoreElements()) {
-                stringMutator.getExclusions().add(elements.nextElement());
-            }
-
-            mutatorManager.getMutator(BadAnnotationMutator.class).setEnabled(mutatorPanel.imageCrashMutatorCheckBox.isSelected());
-
-            mutatorManager.getMutator(ControlFlowMutator.class).setEnabled(mutatorPanel.controlFlowMutatorCheckBox.isSelected());
-            mutatorManager.getMutator(NumberMutator.class).setEnabled(mutatorPanel.numberMutatorCheckBox.isSelected());
-
-            mutatorManager.getMutator(PolymorphMutator.class).setEnabled(mutatorPanel.polymorphMutatorCheckBox.isSelected());
-
-            mutatorManager.getMutator(ImageCrashMutator.class).setEnabled(mutatorPanel.imageCrashMutatorCheckBox.isSelected());
-            mutatorManager.getMutator(ClassFolderMutator.class).setEnabled(mutatorPanel.classFolderMutatorCheckBox.isSelected());
-
-            mutatorManager.getMutator(TrimMutator.class).setEnabled(mutatorPanel.trimMutatorCheckBox.isSelected());
-            mutatorManager.getMutator(ShuffleMutator.class).setEnabled(mutatorPanel.shuffleMutatorCheckBox.isSelected());
-
-            int referenceMutatorIndex = mutatorPanel.referenceMutatorComboBox.getSelectedIndex();
-            if (referenceMutatorIndex > 0) {
-                ReferenceMutator mutator = mutatorManager.getMutator(ReferenceMutator.class);
-                mutator.setEnabled(true);
-            }
-
-            int lineNumberMutatorIndex = mutatorPanel.lineNumberMutatorComboBox.getSelectedIndex();
-            if (lineNumberMutatorIndex > 0) {
-                LineNumberMutator mutator = mutatorManager.getMutator(LineNumberMutator.class);
-                mutator.setType(lineNumberMutatorIndex - 1);
-                mutator.setEnabled(true);
-            }
-
-            int localVariableMutatorIndex = mutatorPanel.localVariableMutatorComboBox.getSelectedIndex();
-            if (localVariableMutatorIndex > 0) {
-                LocalVariableMutator mutator = mutatorManager.getMutator(LocalVariableMutator.class);
-                mutator.setType(localVariableMutatorIndex - 1);
-                mutator.setEnabled(true);
-            }
-
-            if (caesium.run(input, output) != 0) {
-                Caesium.getLogger().warn("Exited with non default exit code.");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     private void saveConfigProfile(final Properties properties) throws IOException {
@@ -377,38 +396,45 @@ public class CGui {
      */
     private void $$$setupUI$$$() {
         contentPane = new JPanel();
-        contentPane.setLayout(new GridLayoutManager(2, 5, new Insets(5, 5, 5, 5), -1, -1));
+        contentPane.setLayout(new GridLayoutManager(2, 6, new Insets(5, 5, 5, 5), -1, -1));
         contentPane.setPreferredSize(new Dimension(600, 450));
-        final JTabbedPane tabbedPane1 = new JTabbedPane();
-        contentPane.add(tabbedPane1, new GridConstraints(0, 0, 1, 5, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, new Dimension(200, 200), null, 0, false));
+        tabbedPane = new JTabbedPane();
+        contentPane.add(tabbedPane, new GridConstraints(0, 0, 1, 6, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, new Dimension(200, 200), null, 0, false));
         final JPanel panel1 = new JPanel();
         panel1.setLayout(new GridLayoutManager(1, 1, new Insets(5, 5, 5, 5), -1, -1));
-        tabbedPane1.addTab("Main", panel1);
+        tabbedPane.addTab("Main", panel1);
         mainPanel = new MainPanel();
         panel1.add(mainPanel.$$$getRootComponent$$$(), new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
         final JPanel panel2 = new JPanel();
         panel2.setLayout(new GridLayoutManager(1, 1, new Insets(5, 5, 5, 5), -1, -1));
-        tabbedPane1.addTab("Mutator", panel2);
+        tabbedPane.addTab("Mutator", panel2);
         mutatorPanel = new MutatorPanel();
         panel2.add(mutatorPanel.$$$getRootComponent$$$(), new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
         final JPanel panel3 = new JPanel();
         panel3.setLayout(new GridLayoutManager(1, 1, new Insets(5, 5, 5, 5), -1, -1));
-        tabbedPane1.addTab("Exclusions", panel3);
+        tabbedPane.addTab("Exclusions", panel3);
         exclusionsPanel = new ExclusionsPanel();
         panel3.add(exclusionsPanel.$$$getRootComponent$$$(), new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
         final JPanel panel4 = new JPanel();
         panel4.setLayout(new GridLayoutManager(1, 1, new Insets(5, 5, 5, 5), -1, -1));
-        tabbedPane1.addTab("Dependencies", panel4);
+        tabbedPane.addTab("Dependencies", panel4);
         libraryTab = new LibraryTab();
         panel4.add(libraryTab.$$$getRootComponent$$$(), new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
         final JPanel panel5 = new JPanel();
         panel5.setLayout(new GridLayoutManager(1, 1, new Insets(5, 5, 5, 5), -1, -1));
-        tabbedPane1.addTab("Classpath", panel5);
+        tabbedPane.addTab("Classpath", panel5);
         classpathPanel = new ClassPathPanel();
         panel5.add(classpathPanel.$$$getRootComponent$$$(), new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
+        final JPanel panel6 = new JPanel();
+        panel6.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), -1, -1));
+        tabbedPane.addTab("Log", panel6);
+        loggerScrollPane = new JScrollPane();
+        panel6.add(loggerScrollPane, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
+        loggerPanel = new LoggerPanel();
+        loggerScrollPane.setViewportView(loggerPanel.$$$getRootComponent$$$());
         runMutateButton = new JButton();
         runMutateButton.setText("");
-        contentPane.add(runMutateButton, new GridConstraints(1, 4, 1, 1, GridConstraints.ANCHOR_EAST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        contentPane.add(runMutateButton, new GridConstraints(1, 5, 1, 1, GridConstraints.ANCHOR_EAST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         loadProfileButton = new JButton();
         loadProfileButton.setText("");
         contentPane.add(loadProfileButton, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
@@ -420,6 +446,9 @@ public class CGui {
         contentPane.add(configProfileLabel, new GridConstraints(1, 2, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         final Spacer spacer1 = new Spacer();
         contentPane.add(spacer1, new GridConstraints(1, 3, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
+        stopButton = new JButton();
+        stopButton.setText("");
+        contentPane.add(stopButton, new GridConstraints(1, 4, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }
 
     /**

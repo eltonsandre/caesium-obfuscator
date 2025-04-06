@@ -1,18 +1,19 @@
 package dev.eltonsandre.caesium.util;
 
-import dev.eltonsandre.caesium.Caesium;
 import lombok.experimental.UtilityClass;
 
+import java.security.SecureRandom;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.IntStream;
 
 @UtilityClass
 public class StringUtil {
+
     private final String ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
     public String getRandomString(int min, int max, boolean uppercase) {
-        Random random = Caesium.getInstance().getRandom();
+        Random random = new SecureRandom();
 
         StringBuilder sb = new StringBuilder();
 

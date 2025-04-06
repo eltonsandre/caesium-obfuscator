@@ -1,7 +1,7 @@
 package dev.eltonsandre.caesium;
 
-import dev.eltonsandre.caesium.exception.CaesiumMissingDependencyException;
 import dev.eltonsandre.caesium.exception.CaesiumException;
+import dev.eltonsandre.caesium.exception.CaesiumMissingDependencyException;
 import dev.eltonsandre.caesium.util.OSUtil;
 import dev.eltonsandre.caesium.util.classwriter.ClassTree;
 import dev.eltonsandre.caesium.util.wrapper.impl.ClassWrapper;
@@ -12,8 +12,6 @@ import lombok.extern.log4j.Log4j2;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
 
-import javax.swing.*;
-import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -47,11 +45,7 @@ public final class PreRuntime {
     public static final Set<String> libraries = new LinkedHashSet<>();
     public static final Set<String> classPaths = new LinkedHashSet<>();
 
-    public static void loadJavaRuntime() throws HeadlessException, IOException {
-        loadJavaRuntime(null);
-    }
-
-    public static void loadJavaRuntime(Component component) throws HeadlessException, IOException {
+    public static void loadJavaRuntime() throws IOException {
 
         if (Double.parseDouble(System.getProperty("java.vm.specification.version")) > 1.8) {
             File jmods = new File(System.getProperty("java.home") + "/jmods");
@@ -72,8 +66,7 @@ public final class PreRuntime {
                         }
                     }
                 } else {
-                    JOptionPane.showMessageDialog(component, "rt.jar was not found, you need to add it manually.",
-                            "Runtime Error", JOptionPane.ERROR_MESSAGE);
+                    throw new CaesiumException("rt.jar was not found, you need to add it manually.");
                 }
                 break;
 
@@ -87,10 +80,10 @@ public final class PreRuntime {
                         }
                     }
                 } else {
-                    JOptionPane.showMessageDialog(component, "rt.jar was not found, you need to add it manually.",
-                            "Runtime Error", JOptionPane.ERROR_MESSAGE);
+                    throw new CaesiumException("rt.jar was not found, you need to add it manually.");
                 }
                 break;
+
             default:
                 break;
         }
@@ -104,6 +97,10 @@ public final class PreRuntime {
                 ZipFile zipFile = new ZipFile(input);
                 Enumeration<? extends ZipEntry> entries = zipFile.entries();
                 while (entries.hasMoreElements()) {
+                    if (Caesium.isStoped()) {
+                        return;
+                    }
+
                     ZipEntry entry = entries.nextElement();
                     if (!entry.isDirectory()) {
                         if (entry.getName().endsWith(".class")) {
@@ -141,13 +138,18 @@ public final class PreRuntime {
         dependencies.addAll(loadJarAndJmodInClasspaths());
 
         for (String s : dependencies) {
+            if (Caesium.isStoped()) return;
+
             File file = new File(s);
             if (file.exists()) {
-                System.out.printf("Loading library \"%s\".%n", file.getAbsolutePath());
+                log.info("Loading library \"{}\".", file.getAbsolutePath());
+
                 try {
                     ZipFile zipFile = new ZipFile(file);
                     Enumeration<? extends ZipEntry> entries = zipFile.entries();
                     while (entries.hasMoreElements()) {
+                        if (Caesium.isStoped()) return;
+
                         ZipEntry entry = entries.nextElement();
                         if (!entry.isDirectory() && entry.getName().endsWith(".class")) {
                             try {
@@ -168,12 +170,12 @@ public final class PreRuntime {
                     // Logger.info(
                     // String.format("Library \"%s\" could not be opened as a zip file.",
                     // file.getAbsolutePath()));
-                    e.printStackTrace();
+                    log.error(e);
                 } catch (IOException e) {
                     // Logger.info(String.format("IOException happened while trying to load classes
                     // from \"%s\".",
                     // file.getAbsolutePath()));
-                    e.printStackTrace();
+                    log.error(e);
                 }
             } else {
                 // Logger.info(String.format("Library \"%s\" could not be found and will be
@@ -187,8 +189,12 @@ public final class PreRuntime {
     private static Set<String> loadJarAndJmodInClasspaths() {
         final Set<String> dependencies = new LinkedHashSet<>();
         for (String path : classPaths) {
+            if (Caesium.isStoped()) {
+                return dependencies;
+            }
+
             try (Stream<Path> walk = Files.walk(Paths.get(path))) {
-                dependencies.addAll( walk.map(Path::toString)
+                dependencies.addAll(walk.map(Path::toString)
                         .filter(file -> file.endsWith(".jar") || file.endsWith(".jmod"))
                         .collect(Collectors.toSet()));
             } catch (IOException e) {
@@ -204,22 +210,31 @@ public final class PreRuntime {
             if (classWrapper.node.superName != null) {
                 tree.parentClasses.add(classWrapper.node.superName);
                 ClassWrapper superClass = classPath.get(classWrapper.node.superName);
+
                 if (superClass == null)
                     throw new CaesiumMissingDependencyException(classWrapper.node.superName, "is missing in the classpath.");
+
                 buildHierarchy(superClass, classWrapper);
             }
             if (classWrapper.node.interfaces != null && !classWrapper.node.interfaces.isEmpty()) {
                 for (String interfaceFqdn : classWrapper.node.interfaces) {
+                    if (Caesium.isStoped()) {
+                        return;
+                    }
+
                     tree.parentClasses.add(interfaceFqdn);
                     ClassWrapper interfaceClass = classPath.get(interfaceFqdn);
+
                     if (interfaceClass == null)
                         throw new CaesiumMissingDependencyException(interfaceFqdn);
 
                     buildHierarchy(interfaceClass, classWrapper);
                 }
             }
+
             hierarchy.put(classWrapper.node.name, tree);
         }
+
         if (sub != null) {
             hierarchy.get(classWrapper.node.name).subClasses.add(sub.node.name);
         }
@@ -227,7 +242,12 @@ public final class PreRuntime {
 
     public static void buildInheritance() {
         Set<String> missingInClasspath = new HashSet<>();
+
         classes.values().forEach(classWrapper -> {
+            if (Caesium.isStoped()) {
+                return;
+            }
+
             try {
                 buildHierarchy(classWrapper, null);
             } catch (final CaesiumMissingDependencyException dependencyException) {

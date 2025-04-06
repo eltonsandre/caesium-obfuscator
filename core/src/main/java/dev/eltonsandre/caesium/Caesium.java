@@ -15,8 +15,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.security.SecureRandom;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -28,11 +28,11 @@ public class Caesium {
 
     public static final String VERSION = VersionUtil.getVersion();
 
-    private static final String SEPARATOR = Strings.repeat("-", 30);
+    public static final String SEPARATOR = Strings.repeat("-", 30);
 
-    private final SecureRandom random = new SecureRandom();
+    public final static AtomicBoolean STOPED_MUTATOR = new AtomicBoolean();
 
-    private static  Caesium instance;
+    private static Caesium instance;
 
     private final MutatorManager mutatorManager;
     private final ClassManager classManager;
@@ -41,21 +41,31 @@ public class Caesium {
     private Dictionary dictionary = Dictionary.NUMBERS;
 
     public Caesium() {
-        instance =this;
+        instance = this;
         mutatorManager = new MutatorManager();
-        classManager = new ClassManager();
+        classManager = new ClassManager(mutatorManager);
     }
 
-    public int run(File input, File output) throws IOException, CaesiumException {
+    public synchronized static boolean isStoped() {
+        return STOPED_MUTATOR.getAcquire();
+    }
+
+    public boolean run(File input, File output) throws IOException, CaesiumException {
         checkNotNull(input, "Input can't be null");
         checkNotNull(output, "Output can't be null");
+
+        STOPED_MUTATOR.set(false);
 
         separator();
         log.info("Caesium version {}", VERSION);
         separator();
 
         classManager.parseJar(input);
+        if (STOPED_MUTATOR.get()) return false;
+
         classManager.handleMutation();
+        if (STOPED_MUTATOR.get()) return false;
+
         classManager.exportJar(output);
 
         double inputKB = ByteUtil.bytesToKB(input.length());
@@ -63,7 +73,7 @@ public class Caesium {
 
         log.info("Successfully obfuscated target jar. {}Kb -> {}Kb\n\n", inputKB, outputKB);
 
-        return 0;
+        return true;
     }
 
     private void separator() {
