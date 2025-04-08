@@ -22,10 +22,15 @@ import java.io.File;
 public class MutatorRunner {
 
     public static void run(final CaesiumConfig config) {
+        log.info("Config: {}", config.toString().replaceAll(",", ",\n"));
         var input = new File(config.getInput());
 
         if (!input.exists()) {
             throw new CaesiumException("Unable to find input file");
+        }
+
+        if (config.isNotOverrideInput() && input.getParent().equals(config.getOutput())) {
+            throw new CaesiumException("Input file and output file are the same. set notOverrideInput to false");
         }
 
         try {
@@ -40,7 +45,7 @@ public class MutatorRunner {
         var parent = new File(input.getParent());
         var output = new File(config.getOutput());
 
-        if (output.exists()) {
+        if (config.isNotOverrideOutput() && output.exists()) {
             // we do it this way so we don't have to loop through a specified x amount of times
             for (int i = 0; i < parent.listFiles().length; i++) {
                 String filePath = String.format("%s.BACKUP-%d", output.getAbsoluteFile(), i);
@@ -78,23 +83,23 @@ public class MutatorRunner {
             mutatorManager.getMutator(ShuffleMutator.class).setEnabled(config.getMutator().isShufflerMembers());
             mutatorManager.getMutator(TrimMutator.class).setEnabled(config.getMutator().isTrimmer());
 
-            int referenceMutatorIndex = config.getMutator().getReferenceMutation();
-            if (referenceMutatorIndex > 0) {
+            var referenceMutatorIndex = config.getMutator().getReferenceMutation();
+            if (referenceMutatorIndex != null && referenceMutatorIndex.getValue() > 0) {
                 ReferenceMutator mutator = mutatorManager.getMutator(ReferenceMutator.class);
                 mutator.setEnabled(true);
             }
 
-            int lineNumberMutatorIndex = config.getMutator().getLineNumberTables();
-            if (lineNumberMutatorIndex > 0) {
+            var lineNumberMutatorIndex = config.getMutator().getLineNumberTables();
+            if (lineNumberMutatorIndex != null && lineNumberMutatorIndex.getValue() > 0) {
                 LineNumberMutator mutator = mutatorManager.getMutator(LineNumberMutator.class);
-                mutator.setType(lineNumberMutatorIndex - 1);
+                mutator.setType(lineNumberMutatorIndex.getValue() - 1);
                 mutator.setEnabled(true);
             }
 
-            int localVariableMutatorIndex = config.getMutator().getLocalVariableTables();
-            if (localVariableMutatorIndex > 0) {
+            var localVariableMutatorIndex = config.getMutator().getLocalVariableTables();
+            if (localVariableMutatorIndex != null && localVariableMutatorIndex.getValue() > 0) {
                 LocalVariableMutator mutator = mutatorManager.getMutator(LocalVariableMutator.class);
-                mutator.setType(localVariableMutatorIndex - 1);
+                mutator.setType(localVariableMutatorIndex.getValue() - 1);
                 mutator.setEnabled(true);
             }
 
