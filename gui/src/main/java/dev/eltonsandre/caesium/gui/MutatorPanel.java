@@ -29,17 +29,17 @@ public class MutatorPanel extends JPanel {
     }
 
     private void init() {
-        referenceMutatorComboBox.addItem("Off");
-        referenceMutatorComboBox.addItem("Light");
-        referenceMutatorComboBox.addItem("Normal");
+        referenceMutatorComboBox.addItem("off");
+        referenceMutatorComboBox.addItem("light");
+        referenceMutatorComboBox.addItem("normal");
 
-        localVariableMutatorComboBox.addItem("Off");
-        localVariableMutatorComboBox.addItem("Remove");
-        localVariableMutatorComboBox.addItem("Rename");
+        localVariableMutatorComboBox.addItem("off");
+        localVariableMutatorComboBox.addItem("remove");
+        localVariableMutatorComboBox.addItem("rename");
 
-        lineNumberMutatorComboBox.addItem("Off");
-        lineNumberMutatorComboBox.addItem("Remove");
-        lineNumberMutatorComboBox.addItem("Rename");
+        lineNumberMutatorComboBox.addItem("off");
+        lineNumberMutatorComboBox.addItem("remove");
+        lineNumberMutatorComboBox.addItem("rename");
     }
 
     {

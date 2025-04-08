@@ -3,8 +3,6 @@ plugins {
     id "com.github.johnrengelman.shadow" version "7.1.2"
 }
 
-group = 'dev.eltonsandre'
-version = '1.0.10'
 mainClassName = "${project.group}.caesium.gui.CGui"
 
 repositories {
@@ -14,7 +12,7 @@ repositories {
 dependencies {
     implementation(project(':core'))
 
-    implementation('com.intellij:forms_rt:7.0.3'){
+    implementation('com.intellij:forms_rt:7.0.3') {
         exclude group: 'asm', module: 'asm-commons'
     }
 

@@ -252,7 +252,9 @@ public class CGui {
                 .output(mainPanel.outputField.getText())
                 .applicationType(mainPanel.applicationTypeComboBox.getSelectedItem().toString())
 
-                .dictionary(Dictionary.values()[mainPanel.dictionaryComboBox.getSelectedIndex()]);
+                .dictionary(Dictionary.values()[mainPanel.dictionaryComboBox.getSelectedIndex()])
+                .notOverrideInput(mainPanel.noOverrideInputCheck.isSelected())
+                .notOverrideOutput(mainPanel.noOverrideOutputCheck.isSelected());
 
         val mutator = CaesiumConfig.MutatorConfig.builder()
                 .classFolder(mutatorPanel.classFolderMutatorCheckBox.isSelected())
@@ -264,9 +266,9 @@ public class CGui {
                 .stringLiteral(mutatorPanel.stringLiteralcheckBox.isSelected())
                 .trimmer(mutatorPanel.trimMutatorCheckBox.isSelected())
 
-                .referenceMutation(mutatorPanel.referenceMutatorComboBox.getSelectedIndex())
-                .lineNumberTables(mutatorPanel.lineNumberMutatorComboBox.getSelectedIndex())
-                .localVariableTables(mutatorPanel.localVariableMutatorComboBox.getSelectedIndex());
+                .referenceMutation(CaesiumConfig.ReferenceMutation.values()[mutatorPanel.referenceMutatorComboBox.getSelectedIndex()])
+                .lineNumberTables(CaesiumConfig.RemoveOrRename.values()[mutatorPanel.lineNumberMutatorComboBox.getSelectedIndex()])
+                .localVariableTables(CaesiumConfig.RemoveOrRename.values()[mutatorPanel.localVariableMutatorComboBox.getSelectedIndex()]);
 
         configBuilder.mutator(mutator.build());
 
@@ -290,28 +292,31 @@ public class CGui {
     }
 
     private void saveConfigProfile(final Properties properties) throws IOException {
-        properties.put("main.input", mainPanel.inputField.getText());
-        properties.put("main.output", mainPanel.outputField.getText());
+        properties.put("main.input.file", mainPanel.inputField.getText());
+        properties.put("main.input.override", String.valueOf(mainPanel.noOverrideInputCheck.isSelected()));
+
+        properties.put("main.output.file", mainPanel.outputField.getText());
+        properties.put("main.output.override", String.valueOf(mainPanel.noOverrideOutputCheck.isSelected()));
+
         properties.put("main.applicationType", mainPanel.applicationTypeComboBox.getSelectedItem().toString());
         properties.put("main.dictionary", mainPanel.dictionaryComboBox.getSelectedItem().toString());
 
-        properties.put("mutator.stringLiteralMutation", String.valueOf(mutatorPanel.stringLiteralcheckBox.isSelected()));
-        properties.put("mutator.controlFlowMutation", String.valueOf(mutatorPanel.controlFlowMutatorCheckBox.isSelected()));
-        properties.put("mutator.numberMutation", String.valueOf(mutatorPanel.numberMutatorCheckBox.isSelected()));
-
-        properties.put("mutator.referenceMutation", mutatorPanel.referenceMutatorComboBox.getSelectedItem().toString());
-        properties.put("mutator.localVariableTables", mutatorPanel.localVariableMutatorComboBox.getSelectedItem().toString());
-        properties.put("mutator.lineNumberTables", mutatorPanel.lineNumberMutatorComboBox.getSelectedItem().toString());
-        properties.put("mutator.polymorph", String.valueOf(mutatorPanel.polymorphMutatorCheckBox.isSelected()));
+        properties.put("mutator.stringLiteral", String.valueOf(mutatorPanel.stringLiteralcheckBox.isSelected()));
+        properties.put("mutator.controlFlow", String.valueOf(mutatorPanel.controlFlowMutatorCheckBox.isSelected()));
+        properties.put("mutator.number", String.valueOf(mutatorPanel.numberMutatorCheckBox.isSelected()));
         properties.put("mutator.crasher", String.valueOf(mutatorPanel.imageCrashMutatorCheckBox.isSelected()));
         properties.put("mutator.classFolder", String.valueOf(mutatorPanel.classFolderMutatorCheckBox.isSelected()));
         properties.put("mutator.trimmer", String.valueOf(mutatorPanel.trimMutatorCheckBox.isSelected()));
         properties.put("mutator.shufflerMembers", String.valueOf(mutatorPanel.shuffleMutatorCheckBox.isSelected()));
+        properties.put("mutator.polymorph", String.valueOf(mutatorPanel.polymorphMutatorCheckBox.isSelected()));
 
-        properties.put("exclusion.strings", joinString(exclusionsPanel.exclusionStringsModel.elements()));
+        properties.put("mutator.referenceMutation", mutatorPanel.referenceMutatorComboBox.getSelectedItem().toString());
+        properties.put("mutator.localVariableTables", mutatorPanel.localVariableMutatorComboBox.getSelectedItem().toString());
+        properties.put("mutator.lineNumberTables", mutatorPanel.lineNumberMutatorComboBox.getSelectedItem().toString());
 
-        properties.put("dependencies.paths", joinString(libraryTab.dependenciesListModel.elements()));
-        properties.put("classpath.paths", joinString(classpathPanel.classPathListModel.elements()));
+        properties.put("classpath", joinString(classpathPanel.classPathListModel.elements()));
+        properties.put("exclusions", joinString(exclusionsPanel.exclusionStringsModel.elements()));
+        properties.put("dependencies", joinString(libraryTab.dependenciesListModel.elements()));
     }
 
     String joinString(Enumeration<String> enumeration) {
@@ -326,27 +331,38 @@ public class CGui {
     }
 
     private void loadProfile(Properties properties) {
-        Optional.ofNullable(properties.get("main.input"))
+        log.info("Properties loaded:");
+        log.info(properties);
+        log.info("\n\n");
+
+        Optional.ofNullable(properties.get("main.input.file"))
                 .ifPresent(value -> mainPanel.inputField.setText((String) value));
-        Optional.ofNullable(properties.get("main.output"))
+        Optional.ofNullable(properties.get("main.output.file"))
                 .ifPresent(value -> mainPanel.outputField.setText((String) value));
+
+        Optional.ofNullable(properties.get("main.input.override"))
+                .ifPresent(value -> mainPanel.noOverrideInputCheck.setSelected(Boolean.parseBoolean(value.toString())));
+        Optional.ofNullable(properties.get("main.output.override"))
+                .ifPresent(value -> mainPanel.noOverrideOutputCheck.setSelected(Boolean.parseBoolean(value.toString())));
+
         Optional.ofNullable(properties.get("main.applicationType"))
                 .ifPresent(value -> mainPanel.applicationTypeComboBox.setSelectedItem(value));
         Optional.ofNullable(properties.get("main.dictionary"))
                 .ifPresent(value -> mainPanel.dictionaryComboBox.setSelectedItem(value));
 
-        Optional.ofNullable(properties.get("mutator.stringLiteralMutation"))
-                .ifPresent(value -> mutatorPanel.stringLiteralcheckBox.setSelected(Boolean.parseBoolean(value.toString())));
-        Optional.ofNullable(properties.get("mutator.controlFlowMutation"))
-                .ifPresent(value -> mutatorPanel.controlFlowMutatorCheckBox.setSelected(Boolean.parseBoolean(value.toString())));
-        Optional.ofNullable(properties.get("mutator.numberMutation"))
-                .ifPresent(value -> mutatorPanel.numberMutatorCheckBox.setSelected(Boolean.parseBoolean(value.toString())));
         Optional.ofNullable(properties.get("mutator.referenceMutation"))
                 .ifPresent(value -> mutatorPanel.referenceMutatorComboBox.setSelectedItem(value));
         Optional.ofNullable(properties.get("mutator.localVariableTables"))
                 .ifPresent(value -> mutatorPanel.localVariableMutatorComboBox.setSelectedItem(value));
         Optional.ofNullable(properties.get("mutator.lineNumberTables"))
                 .ifPresent(value -> mutatorPanel.lineNumberMutatorComboBox.setSelectedItem(value));
+
+        Optional.ofNullable(properties.get("mutator.stringLiteral"))
+                .ifPresent(value -> mutatorPanel.stringLiteralcheckBox.setSelected(Boolean.parseBoolean(value.toString())));
+        Optional.ofNullable(properties.get("mutator.controlFlow"))
+                .ifPresent(value -> mutatorPanel.controlFlowMutatorCheckBox.setSelected(Boolean.parseBoolean(value.toString())));
+        Optional.ofNullable(properties.get("mutator.number"))
+                .ifPresent(value -> mutatorPanel.numberMutatorCheckBox.setSelected(Boolean.parseBoolean(value.toString())));
         Optional.ofNullable(properties.get("mutator.polymorph"))
                 .ifPresent(value -> mutatorPanel.polymorphMutatorCheckBox.setSelected(Boolean.parseBoolean(value.toString())));
         Optional.ofNullable(properties.get("mutator.crasher"))
@@ -358,21 +374,21 @@ public class CGui {
         Optional.ofNullable(properties.get("mutator.shufflerMembers"))
                 .ifPresent(value -> mutatorPanel.shuffleMutatorCheckBox.setSelected(Boolean.parseBoolean(value.toString())));
 
-        Optional.ofNullable(properties.get("exclusion.strings"))
+        Optional.ofNullable(properties.get("exclusions"))
                 .ifPresent(value -> Arrays.stream(((String) value).split(","))
                         .filter(Objects::nonNull)
                         .filter(it -> !it.isEmpty())
                         .filter(it -> libraryTab.dependenciesListModel.indexOf(it) == -1)
                         .forEach(exclusionsPanel.exclusionStringsModel::addElement));
 
-        Optional.ofNullable(properties.get("dependencies.paths"))
+        Optional.ofNullable(properties.get("dependencies"))
                 .ifPresent(value -> Arrays.stream(((String) value).split(","))
                         .filter(Objects::nonNull)
                         .filter(it -> !it.isEmpty())
                         .filter(it -> libraryTab.dependenciesListModel.indexOf(it) == -1)
                         .forEach(libraryTab::addDependencyPath));
 
-        Optional.ofNullable(properties.get("classpath.paths"))
+        Optional.ofNullable(properties.get("classpath"))
                 .ifPresent(value -> Arrays.stream(((String) value).split(","))
                         .filter(Objects::nonNull)
                         .filter(it -> !it.isEmpty())
