@@ -51,7 +51,7 @@ public class LibraryTab extends JPanel {
                     currentProfile = chooser.getSelectedFile().getParent();
                     File[] libs = chooser.getSelectedFiles();
                     for (File lib : libs) {
-                         addDependencyPath(lib.toString());
+                        addDependencyPath(lib.toString());
                     }
                 }
             }
@@ -59,18 +59,12 @@ public class LibraryTab extends JPanel {
 
         removeButton.setToolTipText("Remove dependency");
         removeButton.setIcon(Icons.loadIconSvgByTheme("remove"));
-        removeButton.addActionListener(e ->
-                libList.getSelectedValuesList()
-                        .forEach(dependency -> {
-                            PreRuntime.libraries.remove(dependency);
-                            dependenciesListModel.removeElement(dependency);
-                        }));
+        removeButton.addActionListener(e -> libList.getSelectedValuesList().forEach(dependenciesListModel::removeElement));
     }
 
     protected boolean addDependencyPath(final String path) {
         File file = new File(path);
         if (file.exists()) {
-            PreRuntime.libraries.add(path);
             if (!dependenciesListModel.contains(path)) {
                 dependenciesListModel.addElement(path);
             }

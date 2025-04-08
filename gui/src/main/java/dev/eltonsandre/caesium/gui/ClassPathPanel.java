@@ -48,7 +48,7 @@ public class ClassPathPanel extends JPanel {
                     currentProfile = chooser.getSelectedFile().getParent();
                     File[] libs = chooser.getSelectedFiles();
                     for (File lib : libs) {
-                         addClasspath(lib.toString());
+                        addClasspath(lib.toString());
                     }
                 }
             }
@@ -57,17 +57,12 @@ public class ClassPathPanel extends JPanel {
         removeButton.setToolTipText("Remove classPath");
         removeButton.setIcon(Icons.loadIconSvgByTheme("remove"));
         removeButton.addActionListener(e ->
-                classPathList.getSelectedValuesList()
-                        .forEach(dependency -> {
-                            PreRuntime.classPaths.remove(dependency);
-                            classPathListModel.removeElement(dependency);
-                        }));
+                classPathList.getSelectedValuesList().forEach(classPathListModel::removeElement));
     }
 
     protected boolean addClasspath(final String path) {
         File file = new File(path);
         if (file.exists()) {
-            PreRuntime.classPaths.add(path);
             if (!classPathListModel.contains(path)) {
                 classPathListModel.addElement(path);
             }

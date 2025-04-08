@@ -11,6 +11,7 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import dev.eltonsandre.caesium.Caesium;
 import dev.eltonsandre.caesium.CaesiumConfig;
+import dev.eltonsandre.caesium.MutatorConfig;
 import dev.eltonsandre.caesium.MutatorRunner;
 import dev.eltonsandre.caesium.PreRuntime;
 import dev.eltonsandre.caesium.SynchronizedByteArrayOutputStreamWrapper;
@@ -22,10 +23,13 @@ import lombok.val;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.layout.PatternLayout;
+import org.apache.logging.log4j.core.lookup.MainMapLookup;
+import org.apache.logging.log4j.util.Strings;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.text.DefaultCaret;
 import java.awt.*;
 import java.io.File;
 import java.io.FileReader;
@@ -38,7 +42,6 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -50,6 +53,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 @Log4j2
 public class CGui {
+
+    private static String currentProfile = "user.home";
+    private static String loggerFile = "log/caesium.log";
+
+    private static JFrame appFrame;
+    private static boolean labelHidden;
 
     private JPanel contentPane;
     private MainPanel mainPanel;
@@ -67,10 +76,7 @@ public class CGui {
     private JTabbedPane tabbedPane;
     private JScrollPane loggerScrollPane;
     private JButton stopButton;
-    private static JFrame appFrame;
 
-    private String currentProfile = "/home/elton/dados/develop/Caesium/.dev/obfuscation-settings.caesium";
-    //    private String currentProfile = "user.home";
     private Thread runThread;
 
     public CGui() {
@@ -91,7 +97,8 @@ public class CGui {
             if (resource != null) {
                 appFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(resource));
             }
-            initTheme();
+
+            initConfigProperties();
 
             appFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
             appFrame.setContentPane(new CGui().contentPane);
@@ -106,11 +113,14 @@ public class CGui {
         PatternLayout.Builder layoutbuilder = PatternLayout.newBuilder().withPattern("%d{HH:mm:ss.SSS} %-5level - %msg%n");
         // "%-5level
         // %logger{36} - %msg%n"
-        TextAreaAppender appender = new TextAreaAppender("textLog", null, layoutbuilder.build(), 200, false, null);
+        TextAreaAppender appender = new TextAreaAppender("textLog", null, layoutbuilder.build(), 2000, false, null);
         appender.setTextArea(loggerPanel.getLoggerTextArea());
         Logger logger = (Logger) LogManager.getRootLogger();
         appender.start();
         logger.addAppender(appender);
+
+        var caret = (DefaultCaret) loggerPanel.getLoggerTextArea().getCaret();
+        caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
 
         SynchronizedByteArrayOutputStreamWrapper rawout = new SynchronizedByteArrayOutputStreamWrapper();
         // Set new stream for System.out
@@ -129,14 +139,25 @@ public class CGui {
         consoleThread.start();
     }
 
-    private static void initTheme() {
+    private static void initConfigProperties() {
         AtomicBoolean themeLigth = new AtomicBoolean(false);
         File file = new File("caesium.properties");
         try (Reader reader = new FileReader(file)) {
             Properties properties = new Properties();
             properties.load(reader);
             Optional.ofNullable(properties.get("theme.light"))
-                    .ifPresent(value -> themeLigth.set(Boolean.parseBoolean(properties.getProperty("theme.light"))));
+                    .ifPresent(value -> themeLigth.set(Boolean.parseBoolean(value.toString())));
+
+            Optional.ofNullable(properties.get("main.logger.file"))
+                    .ifPresentOrElse(value -> MainMapLookup.setMainArguments("caesium", value.toString()),
+                            () -> MainMapLookup.setMainArguments("caesium", "log/caesium.log"));
+
+            Optional.ofNullable(properties.get("current.profile"))
+                    .ifPresent(value -> currentProfile = value.toString());
+
+            Optional.ofNullable(properties.get("label.hidden"))
+                    .ifPresent(value -> labelHidden = Boolean.parseBoolean(value.toString()));
+
         } catch (Exception ignored) {
         }
 
@@ -149,12 +170,18 @@ public class CGui {
     }
 
     private void initComponents() {
+
+        if (!labelHidden) {
+            stopButton.setText("Stop");
+            runMutateButton.setText("Run mutate");
+            loadProfileButton.setText("Load a profile");
+            saveProfileButton.setText("Save profile");
+        }
+
         stopButton.setVisible(false);
-        stopButton.setText("Stop");
         stopButton.setToolTipText("Stop");
         stopButton.setIcon(Icons.loadIconSvgByTheme("stop"));
 
-        runMutateButton.setText("Run mutate");
         runMutateButton.setToolTipText("Run mutate");
         runMutateButton.setActionCommand("Running...");
         runMutateButton.setIcon(Icons.loadIconSvgByTheme("runAll"));
@@ -185,7 +212,6 @@ public class CGui {
             log.info("Stoped by user.");
         });
 
-        loadProfileButton.setText("Load a profile");
         loadProfileButton.setToolTipText("Load a profile");
         loadProfileButton.setIcon(Icons.loadIconSvgByTheme("outgoingChangesOn"));
         loadProfileButton.addActionListener(e -> {
@@ -194,7 +220,7 @@ public class CGui {
             chooser.setFileFilter(configLoad);
             chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 
-            int response = chooser.showOpenDialog(loadProfileButton);
+            int response = chooser.showOpenDialog(mainPanel);
 
             if (response == JFileChooser.APPROVE_OPTION) {
                 File file = chooser.getSelectedFile();
@@ -211,7 +237,6 @@ public class CGui {
             }
         });
 
-        saveProfileButton.setText("Save profile");
         saveProfileButton.setToolTipText("Save current profile");
         saveProfileButton.setIcon(Icons.loadIconSvgByTheme("menu-saveall"));
         saveProfileButton.addActionListener(e -> {
@@ -248,6 +273,8 @@ public class CGui {
 
     private void runMutate() {
         val configBuilder = CaesiumConfig.builder()
+                .loggerFile(loggerFile)
+                .jdkPath(PreRuntime.jdkPath)
                 .input(mainPanel.inputField.getText())
                 .output(mainPanel.outputField.getText())
                 .applicationType(mainPanel.applicationTypeComboBox.getSelectedItem().toString())
@@ -256,7 +283,7 @@ public class CGui {
                 .notOverrideInput(mainPanel.noOverrideInputCheck.isSelected())
                 .notOverrideOutput(mainPanel.noOverrideOutputCheck.isSelected());
 
-        val mutator = CaesiumConfig.MutatorConfig.builder()
+        val mutator = MutatorConfig.builder()
                 .classFolder(mutatorPanel.classFolderMutatorCheckBox.isSelected())
                 .controlFlow(mutatorPanel.controlFlowMutatorCheckBox.isSelected())
                 .crasher(mutatorPanel.imageCrashMutatorCheckBox.isSelected())
@@ -272,15 +299,9 @@ public class CGui {
 
         configBuilder.mutator(mutator.build());
 
-        Enumeration<String> elements = exclusionsPanel.exclusionStringsModel.elements();
-        Set<String> exclusions = new HashSet<>();
-        while (elements.hasMoreElements()) {
-            exclusions.add(elements.nextElement());
-        }
-
-        configBuilder.exclusions(exclusions)
-                .dependencies(joinString(libraryTab.dependenciesListModel.elements()))
-                .classpath(joinString(classpathPanel.classPathListModel.elements()))
+        configBuilder.exclusions(toSet(exclusionsPanel.exclusionStringsModel.elements()))
+                .dependencies(toSet(libraryTab.dependenciesListModel.elements()))
+                .classpath(toSet(classpathPanel.classPathListModel.elements()))
                 .build();
 
         try {
@@ -291,7 +312,16 @@ public class CGui {
 
     }
 
+    private static <T> Set<T> toSet(final Enumeration<T> elements) {
+        Set<T> list = new HashSet<>();
+        while (elements.hasMoreElements()) {
+            list.add(elements.nextElement());
+        }
+        return list;
+    }
+
     private void saveConfigProfile(final Properties properties) throws IOException {
+        properties.put("main.logger.file", loggerFile);
         properties.put("main.input.file", mainPanel.inputField.getText());
         properties.put("main.input.override", String.valueOf(mainPanel.noOverrideInputCheck.isSelected()));
 
@@ -317,6 +347,10 @@ public class CGui {
         properties.put("classpath", joinString(classpathPanel.classPathListModel.elements()));
         properties.put("exclusions", joinString(exclusionsPanel.exclusionStringsModel.elements()));
         properties.put("dependencies", joinString(libraryTab.dependenciesListModel.elements()));
+
+        var stringBuilder = new StringBuilder();
+        properties.forEach((k, v) -> stringBuilder.append(k).append(" = ").append(v).append("\n"));
+        log.info("Exporting properties:\n{}\n\n", stringBuilder);
     }
 
     String joinString(Enumeration<String> enumeration) {
@@ -331,9 +365,12 @@ public class CGui {
     }
 
     private void loadProfile(Properties properties) {
-        log.info("Properties loaded:");
-        log.info(properties);
-        log.info("\n\n");
+        var stringBuilder = new StringBuilder();
+        properties.forEach((k, v) -> stringBuilder.append(k).append(" = ").append(v).append("\n"));
+        log.info("Properties loaded:\n{}\n\n", stringBuilder);
+
+        Optional.ofNullable(properties.get("main.logger.file"))
+                .ifPresent(value -> loggerFile = (String) value);
 
         Optional.ofNullable(properties.get("main.input.file"))
                 .ifPresent(value -> mainPanel.inputField.setText((String) value));
@@ -376,22 +413,19 @@ public class CGui {
 
         Optional.ofNullable(properties.get("exclusions"))
                 .ifPresent(value -> Arrays.stream(((String) value).split(","))
-                        .filter(Objects::nonNull)
-                        .filter(it -> !it.isEmpty())
+                        .filter(Strings::isNotBlank)
                         .filter(it -> libraryTab.dependenciesListModel.indexOf(it) == -1)
                         .forEach(exclusionsPanel.exclusionStringsModel::addElement));
 
         Optional.ofNullable(properties.get("dependencies"))
                 .ifPresent(value -> Arrays.stream(((String) value).split(","))
-                        .filter(Objects::nonNull)
-                        .filter(it -> !it.isEmpty())
+                        .filter(Strings::isNotBlank)
                         .filter(it -> libraryTab.dependenciesListModel.indexOf(it) == -1)
                         .forEach(libraryTab::addDependencyPath));
 
         Optional.ofNullable(properties.get("classpath"))
                 .ifPresent(value -> Arrays.stream(((String) value).split(","))
-                        .filter(Objects::nonNull)
-                        .filter(it -> !it.isEmpty())
+                        .filter(Strings::isNotBlank)
                         .filter(it -> classpathPanel.classPathListModel.indexOf(it) == -1)
                         .forEach(classpathPanel::addClasspath));
     }

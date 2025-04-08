@@ -27,7 +27,7 @@ public class ExclusionsPanel extends JPanel {
         exclusionsAddButton.setToolTipText("Add String Exclusion");
         exclusionsAddButton.setIcon(Icons.loadIconSvgByTheme("add"));
         exclusionsAddButton.addActionListener(l -> {
-            if (exclusionsField.getText().length() > 0) {
+            if (!exclusionsField.getText().isEmpty()) {
                 exclusionStringsModel.addElement(exclusionsField.getText());
                 exclusionsField.setText("");
             }
@@ -36,7 +36,7 @@ public class ExclusionsPanel extends JPanel {
         exclusionsRemoveButton.setToolTipText("Remove String exclusion selected in the list");
         exclusionsRemoveButton.setIcon(Icons.loadIconSvgByTheme("remove"));
         exclusionsRemoveButton.addActionListener(l -> {
-            if (exclusionStringsModel.size() > 0 && exclusionStringList.getSelectedIndex() != -1) {
+            if (!exclusionStringsModel.isEmpty() && exclusionStringList.getSelectedIndex() != -1) {
                 exclusionStringList.getSelectedValuesList().forEach(exclusionStringsModel::removeElement);
             }
         });

@@ -38,3 +38,7 @@ hs_err_pid*
 .classpath
 .project
 .settings/org.eclipse.jdt.core.prefs
+
+/core/build/
+/gui/build/
+/plugin/build/

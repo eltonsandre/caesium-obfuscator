@@ -44,13 +44,25 @@ public final class PreRuntime {
 
     public static final Set<String> libraries = new LinkedHashSet<>();
     public static final Set<String> classPaths = new LinkedHashSet<>();
+    public static String jdkPath = null;
+
+    public static void loadJavaRuntime(String jdk) {
+        if (jdk == null || jdk.isEmpty()) return;
+
+        File jmods = new File(jdk + "/jmods");
+        if (jmods.exists() && jmods.listFiles() != null) {
+            jdkPath = jmods.getAbsolutePath();
+            classPaths.add(jdkPath);
+        }
+    }
 
     public static void loadJavaRuntime() throws IOException {
 
         if (Double.parseDouble(System.getProperty("java.vm.specification.version")) > 1.8) {
             File jmods = new File(System.getProperty("java.home") + "/jmods");
             if (jmods.exists() && jmods.listFiles() != null) {
-                classPaths.add(jmods.getAbsolutePath());
+                jdkPath = jmods.getAbsolutePath();
+                classPaths.add(jdkPath);
                 return;
             }
         }
@@ -87,6 +99,7 @@ public final class PreRuntime {
             default:
                 break;
         }
+        log.debug("Java runtime libraries: {}", libraries);
     }
 
     public static void loadInput(String inputFile) throws CaesiumException {

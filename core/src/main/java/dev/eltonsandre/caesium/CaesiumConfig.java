@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 @Data
@@ -16,6 +17,8 @@ import java.util.Set;
 @AllArgsConstructor
 public class CaesiumConfig {
 
+    private String loggerFile;
+    private String jdkPath;
     private String input;
     private String output;
 
@@ -29,32 +32,13 @@ public class CaesiumConfig {
 
     private MutatorConfig mutator;
 
-    private String classpath;
-    private String dependencies;
-    private Set<String> exclusions;
+    @Builder.Default
+    private Set<String> classpath = new LinkedHashSet<>();
+    @Builder.Default
+    private Set<String> dependencies = new LinkedHashSet<>();
+    @Builder.Default
+    private Set<String> exclusions = new LinkedHashSet<>();
 
-
-    @Data
-    @Builder(toBuilder = true)
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class MutatorConfig {
-
-        private boolean stringLiteral;
-        private boolean controlFlow;
-        private boolean number;
-
-        private RemoveOrRename lineNumberTables;
-        private RemoveOrRename localVariableTables;
-        private ReferenceMutation referenceMutation;
-
-        private boolean polymorph;
-        private boolean crasher;
-        private boolean classFolder;
-        private boolean trimmer;
-        private boolean shufflerMembers;
-
-    }
 
     @Getter
     @RequiredArgsConstructor
@@ -62,7 +46,7 @@ public class CaesiumConfig {
         off(0),
         light(1),
         normal(2);
-        
+
         private final int value;
     }
 

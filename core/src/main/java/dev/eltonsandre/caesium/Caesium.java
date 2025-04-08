@@ -68,6 +68,8 @@ public class Caesium {
 
         classManager.exportJar(output);
 
+        PreRuntime.loadJavaRuntime(null);
+
         double inputKB = ByteUtil.bytesToKB(input.length());
         double outputKB = ByteUtil.bytesToKB(output.length());
 

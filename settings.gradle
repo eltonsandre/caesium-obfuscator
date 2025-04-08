@@ -2,3 +2,4 @@ rootProject.name = 'caesium'
 
 include 'core'
 include 'gui'
+include 'plugin'

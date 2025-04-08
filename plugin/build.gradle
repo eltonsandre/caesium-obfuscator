@@ -1,0 +1,24 @@
+plugins {
+    id 'java-gradle-plugin'
+}
+
+gradlePlugin {
+    plugins {
+        create("caesium.obfuscator") {
+            id = "caesium.obfuscator"
+            displayName = "Plugin for obfuscation with Caesium"
+            description = "A plugin that provides a task to obfuscation with Caesium"
+            implementationClass = "dev.eltonsandre.caesium.plugin.CaesiumObfucatorPlugin"
+        }
+    }
+}
+
+dependencies {
+    implementation(project(':core'))
+
+    testImplementation(gradleTestKit())
+}
+
+test {
+    useJUnitPlatform()
+}

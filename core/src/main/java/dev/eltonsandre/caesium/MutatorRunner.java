@@ -22,7 +22,12 @@ import java.io.File;
 public class MutatorRunner {
 
     public static void run(final CaesiumConfig config) {
-        log.info("Config: {}", config.toString().replaceAll(",", ",\n"));
+
+        log.info("Config:\n{}", config.toString()
+                .replaceAll(",", ",\n")
+                .replaceAll("\\[", "[\n ").replaceAll("]", "\n]")
+                .replaceAll("\\(", "(\n ").replaceAll("\\)", "\n)"));
+
         var input = new File(config.getInput());
 
         if (!input.exists()) {
@@ -38,9 +43,6 @@ public class MutatorRunner {
         } catch (CaesiumException e1) {
             e1.printStackTrace();
         }
-
-        PreRuntime.loadClassPath();
-        PreRuntime.buildInheritance();
 
         var parent = new File(input.getParent());
         var output = new File(config.getOutput());
@@ -102,6 +104,12 @@ public class MutatorRunner {
                 mutator.setType(localVariableMutatorIndex.getValue() - 1);
                 mutator.setEnabled(true);
             }
+
+            PreRuntime.libraries.addAll(config.getDependencies());
+            PreRuntime.classPaths.addAll(config.getClasspath());
+
+            PreRuntime.loadClassPath();
+            PreRuntime.buildInheritance();
 
             if (!caesium.run(input, output)) {
                 if (Caesium.isStoped()) log.warn("Stoped by user.");

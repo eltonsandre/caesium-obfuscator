@@ -1,17 +1,6 @@
-plugins {
-    id 'java'
-}
-
-group = 'dev.eltonsandre'
-version = '1.0.10'
-
-repositories {
-    mavenCentral()
-}
-
 dependencies {
-    implementation 'org.ow2.asm:asm-tree:9.3',
-            'org.ow2.asm:asm-commons:9.3',
+    implementation 'org.ow2.asm:asm-tree:9.8',
+            'org.ow2.asm:asm-commons:9.8',
 
             'net.sf.jopt-simple:jopt-simple:5.0.4',
 
